@@ -1,0 +1,27 @@
+:root {
+  --green-dark: #1b4332; /* sidebar */
+  --green: #2e7d32; /* acento principal */
+  --green-bright: #4caf50; /* estado ativo, foco */
+  --bg: #f5f7fa;
+  --card: #ffffff;
+  --border: #e5eae8;
+  --text: #1b1b1b;
+  --text-2: #5f6560;
+  --muted: #9aa0a6;
+  --tint-green: #d9ece0;
+  --tint-gray: #ededea;
+
+  /* acento por subsistema (wayfinding) */
+  --amber: #e0a423; /* iluminação */
+  --blue: #4a6fa5; /* projetor */
+  --leaf: #3e9142; /* irrigação */
+  --teal: #2a9aae; /* umidificador */
+
+  --danger: #c94a4a;
+
+  --shadow: 0 4px 16px rgba(15, 38, 26, 0.08);
+  --radius: 16px;
+
+  --sidebar-w: 264px;
+  --font: "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
