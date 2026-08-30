@@ -1,0 +1,20 @@
+node_modules
+.env
+.env.*
+!.env.example
+
+# Prisma Client gerado (recriado por `npm run prisma:generate`)
+/generated
+
+# Saida do `npm run build`
+/dist
+*.tsbuildinfo
+
+# Relatorio de cobertura dos testes
+/coverage
+
+# Logs
+*.log
+npm-debug.log*
+
+

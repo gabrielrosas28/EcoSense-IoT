@@ -1,0 +1,198 @@
+// Schema do EcoSense IoT — Postgres via Prisma 7 (driver adapter `@prisma/adapter-pg`).
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider               = "prisma-client"
+  output                 = "../generated/prisma"
+  runtime                = "nodejs"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Usuário do painel. Autenticação por e-mail + senha (hash bcrypt).
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  routines Routine[]
+
+  @@map("users")
+}
+
+/// Espaço físico monitorado (sala de aula, estufa, laboratório).
+/// Agrupa dispositivos e é o recorte natural dos relatórios.
+model Environment {
+  id          String  @id @default(uuid())
+  slug        String  @unique
+  name        String
+  description String?
+  /// Onde fica: "Bloco A - 2o andar". Livre, só para exibição.
+  location    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  devices  Device[]
+  readings Reading[]
+
+  @@map("environments")
+}
+
+/// Os quatro subsistemas: luz, projetor, irrigacao, umidificador.
+/// `slug` é o mesmo id usado pelo frontend e pelos tópicos MQTT.
+model Device {
+  id       String     @id @default(uuid())
+  slug     String     @unique
+  name     String
+  kind     DeviceKind
+  accent   String
+  /// true = ligado. Espelha `devices[id].on` no store do frontend.
+  isOn     Boolean    @default(false)
+  mode     DeviceMode @default(AUTO)
+  /// false quando o ESP32 para de responder (last will do MQTT).
+  online   Boolean    @default(false)
+  /// Configuração/leitura corrente (threshold, sleepMin, fonte, ...).
+  /// Formato livre por dispositivo — igual ao `reading` do store.
+  settings Json       @default("{}")
+  lastSeen DateTime?
+
+  /// Em que ambiente o dispositivo está instalado. Opcional: um device
+  /// recém-pareado pode existir antes de alguém dizer onde ele fica.
+  environmentId String?
+  environment   Environment? @relation(fields: [environmentId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  readings  Reading[]
+  events    Event[]
+  commands  Command[]
+  routines  Routine[]
+
+  @@index([environmentId])
+  @@map("devices")
+}
+
+enum DeviceKind {
+  LIGHT
+  PROJECTOR
+  IRRIGATION
+  HUMIDIFIER
+
+  @@map("device_kind")
+}
+
+enum DeviceMode {
+  AUTO
+  MANUAL
+
+  @@map("device_mode")
+}
+
+/// Série temporal de sensores (umidade do solo/ar, presença, consumo).
+/// Série temporal dos sensores: uma linha por medição.
+/// É o histórico que alimenta os gráficos — o valor *corrente* fica em
+/// `Device.settings`, para não precisar consultar a série a cada tela.
+model Reading {
+  id       String @id @default(uuid())
+  deviceId String
+  device   Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  /// Ambiente no momento da leitura. Copiado do device de propósito: se o
+  /// dispositivo for realocado depois, o histórico continua contando a
+  /// verdade sobre onde aquilo foi medido.
+  environmentId String?
+  environment   Environment? @relation(fields: [environmentId], references: [id], onDelete: SetNull)
+
+  /// O que foi medido: "soil", "air", "presenca", ... (chaves do `reading`
+  /// do frontend).
+  metric String
+  value  Float
+  unit   String?
+  readAt DateTime @default(now())
+
+  @@index([deviceId, metric, readAt])
+  @@index([environmentId, readAt])
+  @@map("readings")
+}
+
+/// Histórico exibido no EventList do dashboard.
+model Event {
+  id        String     @id @default(uuid())
+  deviceId  String?
+  device    Device?    @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  message   String
+  source    EventSource @default(SYSTEM)
+  createdAt DateTime    @default(now())
+
+  @@index([createdAt])
+  @@map("events")
+}
+
+enum EventSource {
+  USER
+  DEVICE
+  ROUTINE
+  SYSTEM
+
+  @@map("event_source")
+}
+
+/// Comando enviado ao dispositivo (publicado em `ecosense/<slug>/cmd`).
+/// Guardado para auditoria e para reenvio quando o device volta a ficar online.
+model Command {
+  id        String        @id @default(uuid())
+  deviceId  String
+  device    Device        @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  action    String
+  payload   Json          @default("{}")
+  status    CommandStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+
+  @@index([deviceId, createdAt])
+  @@map("commands")
+}
+
+enum CommandStatus {
+  PENDING
+  SENT
+  ACKED
+  FAILED
+
+  @@map("command_status")
+}
+
+/// Regra "SE <sensor> <operador> <valor> ENTÃO <ação> <dispositivo>".
+model Routine {
+  id        String   @id @default(uuid())
+  name      String
+  enabled   Boolean  @default(true)
+
+  /// Condição
+  sensor    String
+  operator  String
+  value     Float
+
+  /// Ação
+  action    String
+  deviceId  String
+  device    Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  ownerId   String?
+  owner     User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([deviceId])
+  @@map("routines")
+}
