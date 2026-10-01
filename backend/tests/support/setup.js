@@ -9,6 +9,8 @@ process.env.JWT_SECRET = "segredo-usado-somente-nos-testes";
 process.env.JWT_EXPIRES_IN = "1h";
 process.env.CORS_ORIGIN = "http://localhost:5173";
 process.env.APP_TIMEZONE = "America/Sao_Paulo";
+// Sem broker por padrão; tests/mqtt.test.js sobe o próprio, em memória.
+process.env.MQTT_URL = "";
 
 const { closePool, pool } = await import("../../src/database/pool.js");
 const { seed } = await import("../../src/database/seed.js");

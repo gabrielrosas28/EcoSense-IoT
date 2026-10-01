@@ -1,9 +1,15 @@
-# PostgreSQL para desenvolvimento local.
-#   docker compose up -d       sobe o banco (os dados ficam no volume)
+# Infra de desenvolvimento do backend: PostgreSQL + broker MQTT (Mosquitto).
+#   docker compose up -d       sobe tudo (os dados ficam nos volumes)
 #   docker compose down        para (os dados continuam)
 #   docker compose down -v     para e apaga os dados
 # Depois de subir: npm run db:migrate && npm run db:seed
 name: ecosense-backend
+
+# O broker é um só para API, simulador e ESP32: vem do compose do simulador
+# (container `ecosense-mqtt`, portas 1883 e 9001). Se ele já estiver no ar pelo
+# `npm run broker` do simulador, suba só o banco: `docker compose up -d db`.
+include:
+  - ../simulator/docker-compose.yml
 
 services:
   db:

@@ -1,22 +1,28 @@
 # EcoSense IoT — Backend
 
-API do EcoSense IoT em **Node.js + Express 5 + PostgreSQL**. É a ponte entre o
-painel React (`../frontend`) e os dispositivos da sala: o frontend nunca fala
-MQTT, só com esta API.
+API do EcoSense IoT em **Node.js + Express 5 + PostgreSQL**, ligada aos
+dispositivos por **MQTT** (Mosquitto). É a ponte entre o painel React
+(`../frontend`) e os dispositivos da sala: o frontend nunca fala MQTT, só com
+esta API.
 
 ```
-React  ──REST──►  API (Express)  ──►  PostgreSQL
-                        │
-                        └──► barramento de comandos ──► MQTT (próxima etapa)
+React ──REST──► API (Express) ──► PostgreSQL
+                  │        ▲
+     publica cmd  ▼        │  assina status
+              Mosquitto (broker MQTT)
+                  │        ▲
+                  ▼        │
+         ESP32 ou simulador (../simulator)
 ```
 
 ## Pré-requisitos
 
 - **Node.js 22.12+** (testado no 24)
-- **PostgreSQL**, de um destes jeitos:
-  - Docker: `docker compose up -d` sobe um Postgres 17 já configurado;
-  - sem Docker: `npm run db:local` sobe um PostgreSQL embutido (PGlite), que
-    não precisa instalar nada.
+- **Docker**: `docker compose up -d` sobe o PostgreSQL 17 e o broker MQTT
+  (Mosquitto 2) já configurados.
+- Sem Docker: `npm run db:local` sobe um PostgreSQL embutido (PGlite), que não
+  precisa instalar nada. Sem broker, deixe `MQTT_URL` vazio no `.env`: a API
+  funciona, mas os comandos não chegam aos dispositivos.
 
 ## Como rodar
 
@@ -25,11 +31,20 @@ cd backend
 npm install
 cp .env.example .env      # os valores padrão já funcionam em desenvolvimento
 
-docker compose up -d      # ou, sem Docker, em outro terminal: npm run db:local
+docker compose up -d      # PostgreSQL + Mosquitto (sem Docker: npm run db:local)
 npm run db:migrate        # cria as tabelas
 npm run db:seed           # dispositivos, rotinas e usuário de teste
 
 npm run dev               # http://localhost:3000/api (reinicia ao salvar)
+```
+
+Para ter "dispositivos" respondendo, rode o simulador em outro terminal. Ele
+usa o mesmo broker, então pule o `npm run broker` dele:
+
+```bash
+cd ../simulator
+npm install
+npm start                 # SIM_SPEED=60 npm start acelera o tempo (1 min por segundo)
 ```
 
 Usuário de desenvolvimento criado pelo seed: **admin@ecosense.local** /
@@ -81,6 +96,8 @@ a API nem sobe e diz o que corrigir.
 | `JWT_SECRET` | obrigatória | Segredo dos tokens (mín. 16 caracteres; o de exemplo é recusado em produção) |
 | `JWT_EXPIRES_IN` | `8h` | Validade do login (`30m`, `8h`, `7d`...) |
 | `APP_TIMEZONE` | `America/Sao_Paulo` | Fuso do horário exibido no histórico |
+| `MQTT_URL` | vazio (sem MQTT) | Broker: `mqtt://localhost:1883` no `.env.example` |
+| `MQTT_USERNAME` / `MQTT_PASSWORD` | — | Credenciais, se o broker exigir |
 
 ## Rotas
 
@@ -89,7 +106,7 @@ Todas sob `/api`. Erros sempre no formato `{ "error": "...", "details": [{ "camp
 
 | Método | Rota | Login | O que faz |
 |---|---|---|---|
-| `GET` | `/api/health` | — | Situação da API e do banco (503 se o banco cair) |
+| `GET` | `/api/health` | — | Situação da API, do banco e do broker (503 se o banco cair) |
 | `POST` | `/api/auth/login` | — | `{ email, password }` → `{ token, user }` |
 | `GET` | `/api/auth/me` | ✔ | Usuário da sessão |
 | `GET` | `/api/devices` | ✔ | Os 4 dispositivos, na ordem das telas |
@@ -140,6 +157,42 @@ Rotina, no formato de `store/useRoutines.js`:
   "action": "on", "device": "irrigacao", "enabled": true }
 ```
 
+## MQTT
+
+O broker é o Mosquitto do `docker-compose.yml`, o mesmo do simulador (container
+`ecosense-mqtt`, porta 1883; 9001 para WebSocket). A ponte fica em
+`src/mqtt/bridge.js` e segue o contrato de `simulator/README.md`:
+
+| Direção | Tópico | Payload | Como |
+|---|---|---|---|
+| API → dispositivo | `ecosense/<id>/cmd` | o comando do painel (`{ "action": ... }`) | QoS 1, **sem** reter |
+| dispositivo → API | `ecosense/<id>/status` | `{ on, mode, online, ...reading }` | QoS 1, retido |
+| broker → API | `ecosense/<id>/status` | `{ "online": false }` (Last Will) | quando o dispositivo cai |
+
+- **Comando**: a API grava o estado pedido e publica. Comando não é retido: um
+  dispositivo que reconecta não pode repetir ordem velha.
+- **Status**: é a verdade sobre o hardware. A API grava estado, leituras e
+  `lastSeenAt`, e registra no histórico só o que mudou sem passar pelo painel:
+  "Irrigação ligada pelo dispositivo", "Umidificador ficou offline". Heartbeat
+  sem mudança não gera evento, e o status que confirma um comando também não.
+- Campo desconhecido ou fora da faixa no status é ignorado (com aviso no log)
+  sem descartar o resto da mensagem.
+- Como o status é retido, ao conectar a API recebe na hora o último estado de
+  cada dispositivo, e o Last Will de quem caiu enquanto ela estava fora.
+- Sem broker, a API sobe do mesmo jeito: tenta reconectar a cada 5 s e guarda
+  os comandos até lá. O `/api/health` mostra `"mqtt": "up" | "down" | "disabled"`.
+
+Para ver o tráfego e mandar um comando na mão:
+
+```bash
+docker exec -it ecosense-mqtt mosquitto_sub -t 'ecosense/#' -v
+docker exec -it ecosense-mqtt mosquitto_pub -t ecosense/irrigacao/cmd -m '{"action":"power","value":"on"}'
+```
+
+O broker de desenvolvimento aceita conexão sem senha. Para ligar o ESP32 de
+verdade na rede, configure usuário e senha no Mosquitto e preencha
+`MQTT_USERNAME`/`MQTT_PASSWORD`.
+
 ## Estrutura
 
 ```
@@ -160,10 +213,11 @@ backend/
 │   ├── repositories/      todo o SQL fica aqui
 │   ├── domain/            catálogo de dispositivos e vocabulário das rotinas
 │   ├── middlewares/       validate, auth, requestLogger, notFound, errorHandler
+│   ├── mqtt/              ponte com o broker: publica comandos, grava status
 │   └── lib/               zod (pt-BR), HttpError, senha, token, barramento
 ├── scripts/               db.js (migrate/seed/reset) e local-db.js (PGlite)
-├── tests/                 Vitest + Supertest contra PostgreSQL em memória
-└── docker-compose.yml     PostgreSQL de desenvolvimento
+├── tests/                 Vitest + Supertest contra PostgreSQL e broker em memória
+└── docker-compose.yml     PostgreSQL + Mosquitto (o broker vem de ../simulator)
 ```
 
 O caminho de uma requisição:
@@ -209,13 +263,13 @@ A suíte sobe um **PostgreSQL de verdade em memória** (PGlite, o Postgres
 compilado para WebAssembly), aplica as migrations e reinicia os dados do seed
 antes de cada teste. A API fala com ele pelo mesmo driver `pg` de produção.
 Não há mock de banco: SQL errado, constraint violada ou transação mal feita
-quebram o teste. Roda em qualquer máquina, sem Docker.
+quebram o teste. A ponte MQTT é testada contra um broker em memória (aedes, o
+mesmo que o simulador usa), com um cliente fazendo o papel do dispositivo. Roda
+em qualquer máquina, sem Docker.
 
-## Próximos passos (fora deste setup)
+## Próximos passos
 
-- **MQTT:** assinar o evento `command` de `src/lib/deviceBus.js` e publicar em
-  `ecosense/<id>/cmd`; assinar `ecosense/+/status` e gravar o estado (contrato
-  em `simulator/README.md`).
 - **WebSocket `/ws`:** repassar os status ao painel em tempo real
   (`services/realtime.js` do frontend já espera `{ topic, payload }`).
 - Série temporal de leituras (`readings`) para os gráficos do dashboard.
+- Autenticação no broker para a rede com o ESP32 de verdade.
