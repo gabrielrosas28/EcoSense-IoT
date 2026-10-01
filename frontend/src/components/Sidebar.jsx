@@ -18,6 +18,7 @@ function StatusDot({ on, online }) {
 
 export default function Sidebar() {
   const devices = useDeviceList();
+  const user = useAuth((s) => s.user);
   const signOut = useAuth((s) => s.signOut);
 
   return (
@@ -69,6 +70,12 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-foot">
+        {user && (
+          <p className="sidebar-user" title={user.email}>
+            <span className="sidebar-user-name">{user.name ?? user.email}</span>
+            {user.name && <span className="sidebar-user-email">{user.email}</span>}
+          </p>
+        )}
         <button type="button" className="logout" onClick={signOut}>
           <IconLogout size={18} />
           Sair

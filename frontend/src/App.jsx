@@ -38,7 +38,9 @@ function AppLayout() {
 
 function LoginRoute() {
   const user = useAuth((s) => s.user);
-  return user ? <Navigate to="/" replace /> : <Login />;
+  const location = useLocation();
+  if (!user) return <Login />;
+  return <Navigate to={location.state?.from?.pathname ?? "/"} replace />;
 }
 
 export default function App() {
