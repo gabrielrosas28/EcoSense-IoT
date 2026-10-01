@@ -20,8 +20,8 @@ rota → validate (Zod) → controller → service → repository → PostgreSQL
 - **Rota** só declara caminho, schema e controller.
 - **Controller** lê `req.validated` (nunca `req.body` cru) e responde. Nada de
   try/catch para responder erro: o Express 5 encaminha a rejeição ao `errorHandler`.
-- **Service** decide e lança `HttpError`. Não conhece `req`/`res`, porque vai
-  ser reusado pelo listener MQTT.
+- **Service** decide e lança `HttpError`. Não conhece `req`/`res`, porque é
+  reusado pela ponte MQTT (`applyStatus`).
 - **Repository** é o único lugar com SQL. Recebe `db` como último parâmetro
   (pool por padrão, ou o client de `transaction()`).
 
@@ -34,6 +34,23 @@ rota → validate (Zod) → controller → service → repository → PostgreSQL
 - `reading` (jsonb) é mesclado com `||`, nunca substituído.
 - Esquema novo = migration nova em `src/database/migrations/NNN_nome.sql`.
   Nunca edite uma migration já aplicada.
+
+## MQTT
+
+- O contrato é o do simulador (`simulator/README.md`, `simulator/src/contract.ts`).
+  Mudou tópico ou payload? Alinhe os dois lados.
+- Comando: QoS 1 e **nunca** `retain`, porque um dispositivo que reconecta não
+  pode repetir ordem velha. Só a ponte (`src/mqtt/bridge.js`) publica; os
+  services usam `publishCommand` do `deviceBus`.
+- Status nunca gera comando de volta (laço backend ↔ dispositivo).
+- A ponte grava os status em fila, um por vez, na ordem de chegada. Não
+  paralelize: heartbeat fora de ordem grava estado velho.
+- Evento no histórico só para mudança real (liga/desliga, online/offline).
+  Heartbeat e confirmação de comando não viram evento.
+- Sensor novo: adicione em `sensors` no catálogo (`src/domain/devices.js`).
+  Chave fora do catálogo é ignorada no status.
+- A API não pode depender do broker para subir: sem conexão ela segue
+  funcionando e o mqtt.js reconecta sozinho.
 
 ## Convenções
 
@@ -50,3 +67,6 @@ rota → validate (Zod) → controller → service → repository → PostgreSQL
 - Rota nova entra com teste no mesmo commit: caminho feliz, 400 e 404.
 - Os testes usam PostgreSQL real em memória (PGlite). Não mocke o banco; se o
   teste precisa de um estado, crie-o com SQL ou pela própria API.
+- MQTT se testa contra o broker em memória (aedes, `tests/mqtt.test.js`), sem
+  Docker. Para afirmar que algo **não** foi retido, use um cliente que conecta
+  depois: quem já está inscrito sempre recebe com `retain=0`.
