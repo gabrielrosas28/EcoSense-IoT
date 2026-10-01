@@ -1,0 +1,6 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "oxc", "unicorn", "import", "node", "promise", "vitest"],
+  "env": { "node": true, "es2024": true },
+  "ignorePatterns": [".pglite/**", "coverage/**"]
+}
