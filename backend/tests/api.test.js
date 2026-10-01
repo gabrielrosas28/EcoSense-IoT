@@ -20,7 +20,7 @@ describe("GET /api/health", () => {
     const res = await request(app).get("/api/health");
 
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ status: "ok", database: "up" });
+    expect(res.body).toMatchObject({ status: "ok", database: "up", mqtt: "disabled" });
   });
 
   it("responde 503 quando o banco não responde", async () => {

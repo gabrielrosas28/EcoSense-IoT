@@ -2,8 +2,9 @@ import { createApp } from "./app.js";
 import { config } from "./config/env.js";
 import { pendingMigrations } from "./database/migrator.js";
 import { closePool, pool, waitForDatabase } from "./database/pool.js";
+import { mqttBridge } from "./mqtt/index.js";
 
-// Bootstrap: banco → HTTP → desligamento limpo.
+// Bootstrap: banco → broker MQTT → HTTP → desligamento limpo.
 
 try {
   await waitForDatabase();
@@ -17,6 +18,10 @@ const pending = await pendingMigrations(pool);
 if (pending.length > 0) {
   console.warn(`[db] migrations pendentes: ${pending.join(", ")}. Rode: npm run db:migrate`);
 }
+
+// Não espera o broker: sem ele a API funciona e a ponte reconecta sozinha.
+if (mqttBridge) mqttBridge.start();
+else console.warn("[mqtt] MQTT_URL vazio: os comandos não serão entregues aos dispositivos");
 
 const server = createApp().listen(config.port, (err) => {
   if (err) {
@@ -37,6 +42,7 @@ async function shutdown(signal) {
   // Se alguma conexão segurar o encerramento, desiste depois de 10 s.
   setTimeout(() => process.exit(1), 10_000).unref();
   server.close(async () => {
+    await mqttBridge?.stop();
     await closePool();
     process.exit(0);
   });

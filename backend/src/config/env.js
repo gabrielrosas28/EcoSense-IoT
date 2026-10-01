@@ -37,6 +37,13 @@ const schema = z
       .default("8h"),
 
     APP_TIMEZONE: z.string().refine(isTimeZone, "fuso horário inválido").default("America/Sao_Paulo"),
+
+    // Broker MQTT. Vazio = API sem MQTT (os comandos só aparecem no log).
+    MQTT_URL: z
+      .union([z.literal(""), z.string().regex(/^(mqtts?|wss?):\/\//, "deve começar com mqtt://, mqtts://, ws:// ou wss://")])
+      .optional(),
+    MQTT_USERNAME: z.string().optional(),
+    MQTT_PASSWORD: z.string().optional(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && env.JWT_SECRET.startsWith("troque")) {
@@ -69,6 +76,11 @@ export const config = Object.freeze({
   database: Object.freeze({ url: env.DATABASE_URL, poolMax: env.DB_POOL_MAX }),
   jwt: Object.freeze({ secret: env.JWT_SECRET, expiresIn: env.JWT_EXPIRES_IN }),
   timezone: env.APP_TIMEZONE,
+  mqtt: Object.freeze({
+    url: env.MQTT_URL || null,
+    username: env.MQTT_USERNAME || undefined,
+    password: env.MQTT_PASSWORD || undefined,
+  }),
 });
 
 /** "*" libera qualquer origem; senão, lista separada por vírgula. */
