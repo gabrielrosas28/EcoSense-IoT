@@ -1,0 +1,26 @@
+{
+  "name": "ecosense-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Simulador dos sensores EcoSense (substitui o ESP32): publica status e responde a comandos via MQTT.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/index.ts",
+    "dev": "node --watch --env-file-if-exists=.env src/index.ts",
+    "broker": "docker compose up -d",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "mqtt": "^5.14.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "aedes": "^0.51.3",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}
