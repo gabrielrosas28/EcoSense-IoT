@@ -1,0 +1,12 @@
+node_modules/
+
+# Configuração local (o .env.example vai para o git)
+.env
+.env.*
+!.env.example
+
+# Dados do PostgreSQL embutido (npm run db:local)
+.pglite/
+
+coverage/
+*.log

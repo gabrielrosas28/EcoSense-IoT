@@ -1,0 +1,28 @@
+# PostgreSQL para desenvolvimento local.
+#   docker compose up -d       sobe o banco (os dados ficam no volume)
+#   docker compose down        para (os dados continuam)
+#   docker compose down -v     para e apaga os dados
+# Depois de subir: npm run db:migrate && npm run db:seed
+name: ecosense-backend
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ecosense
+      POSTGRES_PASSWORD: ecosense
+      POSTGRES_DB: ecosense
+    ports:
+      # Outra coisa já usa a 5432? Rode com DB_PORT=5433 e ajuste o DATABASE_URL.
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecosense -d ecosense"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
