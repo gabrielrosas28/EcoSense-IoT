@@ -1,0 +1,16 @@
+# Broker MQTT local para o simulador (e, na fase 2, para o backend).
+#   docker compose up -d
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: ecosense-mqtt
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ecosense-mqtt-data:/mosquitto/data
+
+volumes:
+  ecosense-mqtt-data:
