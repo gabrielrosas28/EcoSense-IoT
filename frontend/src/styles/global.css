@@ -213,6 +213,31 @@ a {
   padding-top: 16px;
 }
 
+.sidebar-user {
+  margin: 0 0 8px;
+  padding: 0 12px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sidebar-user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-user-email {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .logout {
   width: 100%;
   display: flex;
@@ -883,6 +908,34 @@ input:hover {
   gap: 16px;
 }
 
+.login-form .field {
+  flex: none;
+}
+
+.form-alert {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--card));
+}
+
+.field-error {
+  font-size: 12px;
+  color: var(--danger);
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.btn:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
 .login-foot {
   margin-top: 18px;
   text-align: center;
@@ -961,6 +1014,9 @@ input:hover {
   }
   .sidebar-foot {
     padding-top: 12px;
+  }
+  .sidebar-user {
+    display: none;
   }
   .main {
     padding: 22px 18px 42px;
