@@ -35,3 +35,27 @@ export function routineProblems({ sensor, operator, value }) {
   }
   return [];
 }
+
+/** Como cada sensor aparece no histórico ("umidade do solo menor que 30%"). */
+const SENSOR_LABELS = { soil: "umidade do solo", air: "umidade do ar", presenca: "presença", hora: "horário" };
+const OPERATOR_LABELS = { lt: "menor que", gt: "maior que", eq: "igual a" };
+const UNITS = { soil: "%", air: "%", hora: "h" };
+
+/**
+ * A condição vale para este valor do sensor? Presença chega como booleano no
+ * status e é comparada como 1/0, o mesmo número que a rotina guarda. Sem
+ * leitura (`undefined`), a condição não vale.
+ */
+export function conditionHolds({ operator, value }, reading) {
+  if (reading === undefined || reading === null) return false;
+  const current = Number(reading);
+  if (operator === "lt") return current < value;
+  if (operator === "gt") return current > value;
+  return current === value;
+}
+
+/** "umidade do solo menor que 30%", "presença não detectada", "horário igual a 7h". */
+export function describeCondition({ sensor, operator, value }) {
+  if (sensor === "presenca") return value === 1 ? "presença detectada" : "presença não detectada";
+  return `${SENSOR_LABELS[sensor]} ${OPERATOR_LABELS[operator]} ${value}${UNITS[sensor]}`;
+}

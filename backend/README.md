@@ -218,6 +218,33 @@ O broker é o Mosquitto do `docker-compose.yml`, o mesmo do simulador (container
 - Sem broker, a API sobe do mesmo jeito: tenta reconectar a cada 5 s e guarda
   os comandos até lá. O `/api/health` mostra `"mqtt": "up" | "down" | "disabled"`.
 
+### Automação (rotinas SE → ENTÃO)
+
+Há duas camadas de automação, e as duas funcionam com o simulador:
+
+1. **No dispositivo** (simulador hoje, ESP32 depois): a luz acende com
+   presença e apaga após `sleepMin` sem ninguém (RF04), a bomba liga abaixo do
+   `threshold` de solo (RF05) e o umidificador liga abaixo do `threshold` de ar
+   (RF06). Isso roda mesmo com a rede fora (RNF04), sempre no modo `auto`.
+2. **No backend** (`src/services/automation.service.js`): as rotinas criadas na
+   tela Rotinas. A cada status recebido, a API avalia as rotinas ativas dos
+   sensores daquele dispositivo e, se for o caso, manda o comando pelo mesmo
+   caminho do painel. As rotinas podem cruzar dispositivos ("SE presença não
+   detectada ENTÃO desligar projetor"). As de `hora` são avaliadas por um
+   relógio interno, na virada de cada hora no fuso `APP_TIMEZONE`.
+
+Regras do motor:
+
+- **Dispara na borda**: só quando a condição passa de falsa a verdadeira.
+  Heartbeat repetido não dispara de novo, e a rotina não briga com quem mudou
+  o dispositivo na mão depois dela. Rotina criada com a condição já valendo
+  espera a próxima transição.
+- **Não age** se o dispositivo alvo estiver em modo **manual** (override do
+  usuário), **offline** ou **já no estado pedido**. Isso também impede laço
+  entre backend e dispositivo.
+- O histórico registra com origem `routine`:
+  *Irrigação ligada pela rotina "umidade do solo menor que 30%"*.
+
 Para ver o tráfego e mandar um comando na mão:
 
 ```bash

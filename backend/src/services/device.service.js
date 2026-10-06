@@ -20,21 +20,24 @@ export async function getDevice(id) {
 }
 
 /**
- * Comando do painel: confere se o dispositivo aceita, grava o novo estado,
- * registra no histórico e entrega ao barramento, que publica no MQTT.
+ * Comando do painel ou de uma rotina: confere se o dispositivo aceita, grava o
+ * novo estado, registra no histórico e entrega ao barramento, que publica no MQTT.
  *
- * O estado gravado é o pedido pelo painel. O status que o dispositivo publica
- * de volta (`applyStatus`) é a confirmação e corrige o banco se ele recusar.
+ * O estado gravado é o pedido. O status que o dispositivo publica de volta
+ * (`applyStatus`) é a confirmação e corrige o banco se ele recusar.
+ *
+ * `origin` diz quem mandou, para o histórico: o painel por padrão, ou
+ * `{ source: "routine", via: 'pela rotina "..."' }` quando é uma automação.
  */
-export async function sendCommand(id, command) {
+export async function sendCommand(id, command, { source = "user", via = "pelo painel" } = {}) {
   const current = await getDevice(id);
-  const { patch, event } = interpret(current, command);
+  const { patch, event } = interpret(current, command, via);
 
   let device = current;
   if (patch || event) {
     device = await transaction(async (client) => {
       const updated = patch ? await devices.updateState(id, patch, client) : current;
-      if (event) await events.create({ deviceId: id, message: event, source: "user" }, client);
+      if (event) await events.create({ deviceId: id, message: event, source }, client);
       return updated;
     });
   }
@@ -47,19 +50,20 @@ export async function sendCommand(id, command) {
  * Status publicado pelo dispositivo em `ecosense/<id>/status`: é a verdade
  * sobre o hardware. Grava o estado, guarda cada medição dos sensores na série
  * temporal (`readings`, dos gráficos) e registra no histórico o que mudou sem
- * passar pelo painel (ligou ou desligou sozinho, caiu, voltou). Nunca publica
- * comando de volta, senão backend e dispositivo entram em laço.
+ * passar pelo painel (ligou ou desligou sozinho, caiu, voltou). Não publica
+ * comando de volta, senão backend e dispositivo entram em laço; quem decide
+ * se uma rotina dispara é o `automation.service`, com o `previous` devolvido aqui.
  *
  * Campo desconhecido ou inválido é ignorado sem descartar o resto: um sensor
  * com defeito não pode esconder o estado dos outros.
  *
- * @returns {Promise<{ device: object, ignored: string[] } | null>} `null` se o
- *   dispositivo não existe
+ * @returns {Promise<{ device: object, previous: object, ignored: string[] } | null>}
+ *   estado depois e antes do status, ou `null` se o dispositivo não existe
  */
 export async function applyStatus(id, payload) {
   const { patch, samples, ignored } = readStatus(id, payload);
 
-  const device = await transaction(async (client) => {
+  return transaction(async (client) => {
     const before = await devices.findForUpdate(id, client);
     if (!before) return null;
 
@@ -68,10 +72,8 @@ export async function applyStatus(id, payload) {
     for (const message of statusEvents(before, after)) {
       await events.create({ deviceId: id, message, source: "device" }, client);
     }
-    return after;
+    return { device: after, previous: before, ignored };
   });
-
-  return device && { device, ignored };
 }
 
 const STATE_FIELDS = {
@@ -128,13 +130,13 @@ function statusEvents(before, after) {
  * dashboard (liga/desliga e modo), em texto para o histórico. Ajustes de
  * slider não viram evento: um arraste geraria dezenas deles.
  */
-function interpret(device, command) {
+function interpret(device, command, via) {
   const catalog = DEVICE_CATALOG[device.id] ?? NO_CATALOG;
 
   switch (command.action) {
     case "power": {
       const on = command.value === true || command.value === "on";
-      return { patch: { on }, event: `${device.name} ${stateWord(on, catalog)} pelo painel` };
+      return { patch: { on }, event: `${device.name} ${stateWord(on, catalog)} ${via}` };
     }
 
     case "mode": {

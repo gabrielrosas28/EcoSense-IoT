@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import mqtt from "mqtt";
 import { deviceBus } from "../lib/deviceBus.js";
+import * as automation from "../services/automation.service.js";
 import * as deviceService from "../services/device.service.js";
 
 export const STATUS_TOPIC = "ecosense/+/status";
@@ -12,6 +13,7 @@ const RECONNECT_MS = 5_000;
  *
  *   painel → API → deviceBus "command" → publish   ecosense/<id>/cmd     (QoS 1)
  *   dispositivo → subscribe ecosense/+/status → applyStatus → PostgreSQL  (QoS 1)
+ *                                                    └→ rotinas SE → ENTÃO → comando
  *
  * É o mesmo contrato do simulador (simulator/README.md). A API não depende do
  * broker para subir: sem conexão, o mqtt.js tenta de novo sozinho e guarda os
@@ -57,9 +59,13 @@ export function createMqttBridge({ url, username, password, log = console }) {
     const result = await deviceService.applyStatus(deviceId, payload);
     if (!result) {
       log.warn(`[mqtt] status de dispositivo desconhecido ignorado: ${deviceId}`);
-    } else if (result.ignored.length > 0) {
+      return;
+    }
+    if (result.ignored.length > 0) {
       log.warn(`[mqtt] ${deviceId}: campos ignorados no status: ${result.ignored.join(", ")}`);
     }
+    // Ainda dentro da fila: a rotina avalia o status na ordem em que chegou.
+    automation.logResults(log, await automation.afterStatus(result));
   }
 
   return {

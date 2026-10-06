@@ -118,6 +118,18 @@ describe("ponte MQTT", () => {
     }, ESPERA);
   });
 
+  it("roda as rotinas sobre o status: solo seco → publica o comando de ligar a irrigação", async () => {
+    comandos.length = 0;
+
+    // Rotina r1 do seed: SE solo < 30 ENTÃO ligar irrigação.
+    await status("irrigacao", { on: false, mode: "auto", online: true, soil: 22, threshold: 30, maxPumpSec: 10 });
+
+    await vi.waitFor(() => {
+      expect(comandos).toEqual([{ topic: "ecosense/irrigacao/cmd", payload: { action: "power", value: "on" }, qos: 1 }]);
+    }, ESPERA);
+    expect((await events())[0]).toMatchObject({ source: "routine", device: "irrigacao" });
+  });
+
   it("fecha o ciclo: comando → dispositivo obedece → status confirma, sem evento duplicado", async () => {
     // Dispositivo de mentira: obedece ao power e confirma publicando o status.
     const obedecer = (topic, raw) => {
