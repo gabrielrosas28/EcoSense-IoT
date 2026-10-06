@@ -54,6 +54,12 @@ export default function Luz() {
                 <p className="card-hint">Sensor PIR da sala</p>
               </div>
             </div>
+
+            {device.mode === "auto" && (
+              <p className="override-hint">
+                No automático, ligar ou desligar por aqui passa a iluminação para o modo manual.
+              </p>
+            )}
           </section>
 
           <section className="card">

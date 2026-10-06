@@ -856,6 +856,39 @@ input:hover {
   color: var(--danger);
 }
 
+/* ---------- gráfico de umidade ---------- */
+
+.chart-legend {
+  display: flex;
+  gap: 18px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-legend i {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.segmented.compact button {
+  padding: 6px 12px;
+}
+
+.override-hint {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .empty {
   text-align: center;
   color: var(--muted);
