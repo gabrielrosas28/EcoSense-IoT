@@ -1,4 +1,5 @@
 import * as deviceService from "../services/device.service.js";
+import * as readingService from "../services/reading.service.js";
 
 export async function list(_req, res) {
   res.json(await deviceService.listDevices());
@@ -12,4 +13,8 @@ export async function show(req, res) {
 export async function command(req, res) {
   const result = await deviceService.sendCommand(req.validated.params.id, req.validated.body);
   res.status(202).json(result);
+}
+
+export async function readings(req, res) {
+  res.json(await readingService.listReadings(req.validated.params.id, req.validated.query));
 }

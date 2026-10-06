@@ -5,6 +5,7 @@ import { HttpError } from "../lib/httpError.js";
 import { toDetails, z } from "../lib/zod.js";
 import * as devices from "../repositories/device.repository.js";
 import * as events from "../repositories/event.repository.js";
+import * as readings from "../repositories/reading.repository.js";
 
 const NO_CATALOG = { settings: {}, sensors: {} };
 
@@ -44,7 +45,8 @@ export async function sendCommand(id, command) {
 
 /**
  * Status publicado pelo dispositivo em `ecosense/<id>/status`: é a verdade
- * sobre o hardware. Grava o estado e registra no histórico o que mudou sem
+ * sobre o hardware. Grava o estado, guarda cada medição dos sensores na série
+ * temporal (`readings`, dos gráficos) e registra no histórico o que mudou sem
  * passar pelo painel (ligou ou desligou sozinho, caiu, voltou). Nunca publica
  * comando de volta, senão backend e dispositivo entram em laço.
  *
@@ -55,13 +57,14 @@ export async function sendCommand(id, command) {
  *   dispositivo não existe
  */
 export async function applyStatus(id, payload) {
-  const { patch, ignored } = readStatus(id, payload);
+  const { patch, samples, ignored } = readStatus(id, payload);
 
   const device = await transaction(async (client) => {
     const before = await devices.findForUpdate(id, client);
     if (!before) return null;
 
     const after = await devices.updateState(id, patch, client);
+    await readings.createMany(id, samples, client);
     for (const message of statusEvents(before, after)) {
       await events.create({ deviceId: id, message, source: "device" }, client);
     }
@@ -82,6 +85,8 @@ function readStatus(id, payload) {
   const readingFields = { ...catalog.settings, ...catalog.sensors };
   const patch = {};
   const reading = {};
+  // Medições para a série temporal; booleano vira 0/1, como nas rotinas.
+  const samples = {};
   const ignored = [];
 
   for (const [key, value] of Object.entries(payload)) {
@@ -92,6 +97,7 @@ function readStatus(id, payload) {
       patch[key] = value;
     } else {
       reading[key] = value;
+      if (key in catalog.sensors) samples[key] = Number(value);
     }
   }
 
@@ -101,7 +107,7 @@ function readStatus(id, payload) {
   patch.seen = patch.online;
   if (Object.keys(reading).length > 0) patch.reading = reading;
 
-  return { patch, ignored };
+  return { patch, samples, ignored };
 }
 
 /** Mudanças que o dashboard precisa contar. Heartbeat sem mudança não gera nada. */

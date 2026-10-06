@@ -17,7 +17,7 @@ const { seed } = await import("../../src/database/seed.js");
 
 // Cada teste começa do estado do seed, o mesmo que o frontend mostra no mock.
 beforeEach(async () => {
-  await pool.query("TRUNCATE events, routines, devices, users RESTART IDENTITY CASCADE");
+  await pool.query("TRUNCATE readings, events, routines, devices, users RESTART IDENTITY CASCADE");
   await seed(pool, { log: () => {} });
 });
 

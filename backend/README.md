@@ -112,6 +112,7 @@ Todas sob `/api`. Erros sempre no formato `{ "error": "...", "details": [{ "camp
 | `GET` | `/api/devices` | ✔ | Os 4 dispositivos, na ordem das telas |
 | `GET` | `/api/devices/:id` | ✔ | Um dispositivo (`luz`, `projetor`, `irrigacao`, `umidificador`) |
 | `POST` | `/api/devices/:id/command` | ✔ | Comando do painel → grava o estado e publica no barramento (202) |
+| `GET` | `/api/devices/:id/readings` | ✔ | Histórico dos sensores (`?sensor=soil&from=…&to=…&interval=15m&limit=500`) |
 | `GET` | `/api/routines` | ✔ | Rotinas SE → ENTÃO |
 | `POST` | `/api/routines` | ✔ | Cria (aceita o `id` gerado pela tela) |
 | `PATCH` | `/api/routines/:id` | ✔ | Altera, por exemplo o interruptor `{ "enabled": false }` |
@@ -150,6 +151,32 @@ Cada dispositivo só aceita os próprios ajustes, nos limites dos sliders:
 (`soil`, `air`, `presenca`) só o dispositivo altera. Tudo isso fica em
 `src/domain/devices.js`.
 
+Histórico de leituras (`GET /api/devices/:id/readings`), uma série por sensor
+do dispositivo, em ordem cronológica:
+
+```json
+{ "device": "irrigacao",
+  "from": "2026-10-05T20:00:00.000Z", "to": "2026-10-06T20:00:00.000Z",
+  "interval": null,
+  "series": { "soil": [{ "at": "2026-10-06T19:45:00.000Z", "value": 42.5 }, ...] } }
+```
+
+| Parâmetro | Padrão | O que faz |
+|---|---|---|
+| `sensor` | todos | Só um sensor (`soil`, `air` ou `presenca`, conforme o dispositivo) |
+| `from` / `to` | últimas 24 h | Período, em ISO 8601 com fuso (`2026-10-06T07:00:00-03:00`) |
+| `interval` | amostras cruas | `1m`, `5m`, `15m`, `1h` ou `1d`: um ponto por janela, `{ at, value, min, max, count }`, com `value` = média |
+| `limit` | `500` (máx. 1000) | Pontos por sensor; ficam os mais recentes do período |
+
+- A série é alimentada pelo status MQTT: cada mensagem grava uma amostra de
+  cada sensor que veio nela. Ajustes do painel (`threshold`, `fonte`...) não
+  são medição e ficam de fora.
+- `presenca` vem como `true`/`false`. Agregada, a média é a fração do tempo
+  com alguém na sala (`0.75` = 75%).
+- A janela `1d` vai da meia-noite à meia-noite de `APP_TIMEZONE`.
+- Todo sensor do dispositivo aparece em `series`, mesmo sem amostras (`[]`).
+  O projetor não tem sensor: `series` vem `{}`.
+
 Rotina, no formato de `store/useRoutines.js`:
 
 ```json
@@ -172,7 +199,8 @@ O broker é o Mosquitto do `docker-compose.yml`, o mesmo do simulador (container
 - **Comando**: a API grava o estado pedido e publica. Comando não é retido: um
   dispositivo que reconecta não pode repetir ordem velha.
 - **Status**: é a verdade sobre o hardware. A API grava estado, leituras e
-  `lastSeenAt`, e registra no histórico só o que mudou sem passar pelo painel:
+  `lastSeenAt`, guarda as medições na série temporal (`readings`) e registra
+  no histórico só o que mudou sem passar pelo painel:
   "Irrigação ligada pelo dispositivo", "Umidificador ficou offline". Heartbeat
   sem mudança não gera evento, e o status que confirma um comando também não.
 - Campo desconhecido ou fora da faixa no status é ignorado (com aviso no log)
@@ -244,6 +272,7 @@ rota → validate (Zod) → controller → service → repository → PostgreSQL
 | `devices` | Os 4 subsistemas e o estado corrente de cada um |
 | `routines` | Regras SE → ENTÃO |
 | `events` | Histórico exibido no dashboard |
+| `readings` | Série temporal dos sensores (uma linha por amostra) |
 | `schema_migrations` | Quais migrations já foram aplicadas |
 
 Os ids dos dispositivos (`luz`, `projetor`, ...) são a chave primária: são os
@@ -271,5 +300,7 @@ em qualquer máquina, sem Docker.
 
 - **WebSocket `/ws`:** repassar os status ao painel em tempo real
   (`services/realtime.js` do frontend já espera `{ topic, payload }`).
-- Série temporal de leituras (`readings`) para os gráficos do dashboard.
+- Gráficos do painel consumindo `/api/devices/:id/readings` (`api.getReadings`
+  já existe no frontend).
+- Retenção da série: hoje cada status vira uma linha, sem limpeza automática.
 - Autenticação no broker para a rede com o ESP32 de verdade.
