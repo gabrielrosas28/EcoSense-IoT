@@ -1,4 +1,3 @@
-/** Medidor circular (umidade do solo / do ar). */
 export default function Gauge({
   value,
   unit = "%",

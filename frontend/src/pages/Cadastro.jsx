@@ -49,7 +49,6 @@ export default function Cadastro() {
     };
   }
 
-  /** Props comuns de cada campo, com o erro ligado por aria-describedby. */
   function fieldProps(field) {
     return {
       name: field,

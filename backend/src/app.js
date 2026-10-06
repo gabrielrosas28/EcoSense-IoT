@@ -7,10 +7,6 @@ import { notFound } from "./middlewares/notFound.js";
 import { requestLogger } from "./middlewares/requestLogger.js";
 import { apiRouter } from "./routes/index.js";
 
-/**
- * Monta a aplicação Express sem abrir porta: o `server.js` sobe o HTTP e os
- * testes usam o app direto, via Supertest.
- */
 export function createApp() {
   const app = express();
 
@@ -21,7 +17,6 @@ export function createApp() {
 
   app.use("/api", apiRouter);
 
-  // 404 e tratamento de erro ficam por último, nesta ordem.
   app.use(notFound);
   app.use(errorHandler);
 

@@ -1,26 +1,18 @@
 import { create } from "zustand";
 import { ApiError, api, setAuthToken, setUnauthorizedHandler } from "../services/api";
 
-/**
- * Sessão em memória — sem localStorage/sessionStorage (regra do CLAUDE.md).
- * Recarregar a página volta ao login.
- *
- * Com VITE_AUTH_MOCK=true, se o backend estiver fora do ar o login entra
- * como usuário de demonstração (Fase 1, sem API).
- */
 const MOCK_FALLBACK = import.meta.env.VITE_AUTH_MOCK === "true";
 
 export const useAuth = create((set, get) => ({
   user: null,
   token: null,
-  status: "idle", // idle | loading
+  status: "idle",
   error: null,
 
   signIn(email, password) {
     return startSession(() => api.login(email, password), { email, name: "Demonstração" });
   },
 
-  /** Cadastro já entra logado: o backend devolve `{ token, user }` como no login. */
   signUp(name, email, password) {
     return startSession(() => api.register(name, email, password), { email, name });
   },
@@ -35,7 +27,6 @@ export const useAuth = create((set, get) => ({
   },
 }));
 
-/** Abre a sessão com o `{ token, user }` que `call` devolve. `true` se deu certo. */
 async function startSession(call, demoUser) {
   useAuth.setState({ status: "loading", error: null });
   try {
@@ -53,7 +44,6 @@ async function startSession(call, demoUser) {
   }
 }
 
-// Token expirado em qualquer chamada autenticada derruba a sessão.
 setUnauthorizedHandler(() => {
   useAuth.getState().signOut();
   useAuth.setState({ error: "Sua sessão expirou. Entre novamente." });

@@ -1,6 +1,5 @@
 import { useDevices } from "../store/useDevices";
 
-/** Histórico de eventos. Vem do store (alimentado por ações e pelo WebSocket). */
 export default function EventList({ deviceId, limit = 8, title = "Eventos recentes" }) {
   const events = useDevices((s) => s.events);
   const devices = useDevices((s) => s.devices);

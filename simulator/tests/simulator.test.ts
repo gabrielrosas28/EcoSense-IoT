@@ -7,11 +7,6 @@ import type { Config } from "../src/config.ts";
 import { seededRng } from "../src/devices.ts";
 import { Simulator } from "../src/simulator.ts";
 
-/**
- * Ponta a ponta contra um broker em memória (aedes) — sem Docker, sem rede
- * externa. Faz o papel do backend: assina status e publica comandos.
- */
-
 let broker: ReturnType<typeof createBroker>;
 let server: Server;
 let url: string;
@@ -51,7 +46,7 @@ beforeAll(async () => {
     mqttUrl: url,
     mqttUsername: undefined,
     mqttPassword: undefined,
-    tickMs: 100_000, // física parada: o teste só observa comandos
+    tickMs: 100_000,
     speed: 1,
     publishMs: 100_000,
     devices: ["luz", "projetor", "irrigacao", "umidificador"],

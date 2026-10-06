@@ -1,13 +1,5 @@
-# Infra de desenvolvimento do backend: PostgreSQL + broker MQTT (Mosquitto).
-#   docker compose up -d       sobe tudo (os dados ficam nos volumes)
-#   docker compose down        para (os dados continuam)
-#   docker compose down -v     para e apaga os dados
-# Depois de subir: npm run db:migrate && npm run db:seed
 name: ecosense-backend
 
-# O broker é um só para API, simulador e ESP32: vem do compose do simulador
-# (container `ecosense-mqtt`, portas 1883 e 9001). Se ele já estiver no ar pelo
-# `npm run broker` do simulador, suba só o banco: `docker compose up -d db`.
 include:
   - ../simulator/docker-compose.yml
 
@@ -20,7 +12,6 @@ services:
       POSTGRES_PASSWORD: ecosense
       POSTGRES_DB: ecosense
     ports:
-      # Outra coisa já usa a 5432? Rode com DB_PORT=5433 e ajuste o DATABASE_URL.
       - "${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data

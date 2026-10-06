@@ -1,9 +1,5 @@
 import { useId } from "react";
 
-/**
- * Slider de limite. O valor exibido vem direto do store (`value`),
- * então mover o slider atualiza o número ao vivo em toda a UI.
- */
 export default function ThresholdSlider({
   label,
   value,

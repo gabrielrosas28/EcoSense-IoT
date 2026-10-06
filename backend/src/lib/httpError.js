@@ -1,7 +1,3 @@
-/**
- * Erro com status HTTP. Lance de qualquer camada; o `errorHandler` responde
- * `{ error, details? }`. Não faça try/catch em controller só para responder erro.
- */
 export class HttpError extends Error {
   constructor(status, message, details) {
     super(message);

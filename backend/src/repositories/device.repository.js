@@ -1,8 +1,5 @@
 import { pool } from "../database/pool.js";
 
-// SQL dos dispositivos. Devolve objetos no formato do store do frontend
-// (store/useDevices.js): o nome das colunas não sai daqui.
-
 const COLUMNS = "id, name, accent, is_on, mode, online, reading, last_seen_at";
 
 export async function findAll(db = pool) {
@@ -15,17 +12,11 @@ export async function findById(id, db = pool) {
   return rows[0] ? toDevice(rows[0]) : null;
 }
 
-/** Lê e trava a linha até o fim da transação (`db` precisa ser o client dela). */
 export async function findForUpdate(id, db) {
   const { rows } = await db.query(`SELECT ${COLUMNS} FROM devices WHERE id = $1 FOR UPDATE`, [id]);
   return rows[0] ? toDevice(rows[0]) : null;
 }
 
-/**
- * Aplica um patch de estado; campo ausente fica como está. `reading` é
- * mesclado (`jsonb ||`), nunca substituído: ajustar um limite não apaga a
- * última leitura do sensor. `seen` marca `last_seen_at` com a hora atual.
- */
 export async function updateState(id, { on, mode, reading, online, seen = false }, db = pool) {
   const { rows } = await db.query(
     `UPDATE devices

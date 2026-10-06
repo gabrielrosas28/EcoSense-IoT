@@ -1,16 +1,6 @@
 import { existsSync } from "node:fs";
 import { z } from "../lib/zod.js";
 
-/**
- * Configuração da aplicação, lida do ambiente e validada no boot.
- *
- * Variável faltando ou inválida derruba o processo aqui, com mensagem clara,
- * e nunca no meio de uma requisição. Variável nova: declare no schema, no
- * `.env.example` e na tabela do README.
- */
-
-// O .env é opcional (em produção as variáveis vêm do ambiente) e nunca
-// sobrescreve o que já está definido. Nos testes quem define é o Vitest.
 const envFile = new URL("../../.env", import.meta.url);
 if (process.env.NODE_ENV !== "test" && existsSync(envFile)) {
   process.loadEnvFile(envFile);
@@ -30,7 +20,6 @@ const schema = z
     DB_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
 
     JWT_SECRET: z.string({ error: required }).min(16, "precisa ter pelo menos 16 caracteres"),
-    // Sem unidade o jsonwebtoken lê milissegundos ("120" = 120 ms): exigimos a unidade.
     JWT_EXPIRES_IN: z
       .string()
       .regex(/^\d+[smhd]$/, "use número + unidade (s, m, h ou d), ex.: 8h")
@@ -38,7 +27,6 @@ const schema = z
 
     APP_TIMEZONE: z.string().refine(isTimeZone, "fuso horário inválido").default("America/Sao_Paulo"),
 
-    // Broker MQTT. Vazio = API sem MQTT (os comandos só aparecem no log).
     MQTT_URL: z
       .union([z.literal(""), z.string().regex(/^(mqtts?|wss?):\/\//, "deve começar com mqtt://, mqtts://, ws:// ou wss://")])
       .optional(),
@@ -83,7 +71,6 @@ export const config = Object.freeze({
   }),
 });
 
-/** "*" libera qualquer origem; senão, lista separada por vírgula. */
 function parseCorsOrigin(value) {
   if (value.trim() === "*") return "*";
   return value

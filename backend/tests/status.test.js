@@ -4,11 +4,6 @@ import { createApp } from "../src/app.js";
 import { applyStatus } from "../src/services/device.service.js";
 import { authHeader } from "./support/auth.js";
 
-/**
- * O status que o dispositivo publica em `ecosense/<id>/status`, aplicado
- * direto no service (sem broker). A ponte MQTT tem teste próprio em mqtt.test.js.
- */
-
 const app = createApp();
 const auth = authHeader();
 
@@ -47,7 +42,6 @@ describe("applyStatus", () => {
   it("não polui o histórico com heartbeat sem mudança", async () => {
     const antes = (await events()).length;
 
-    // Igual ao seed: só a leitura do sensor muda.
     await applyStatus("luz", { on: true, mode: "auto", online: true, presenca: false, sleepMin: 10 });
     await applyStatus("luz", { on: true, mode: "auto", online: true, presenca: true, sleepMin: 10 });
 
@@ -57,7 +51,6 @@ describe("applyStatus", () => {
 
   it("confirma o comando do painel sem duplicar o evento", async () => {
     await request(app).post("/api/devices/projetor/command").set("Authorization", auth).send({ action: "power", value: "on" });
-    // O dispositivo responde com o status já ligado: é a confirmação, não uma mudança nova.
     await applyStatus("projetor", { on: true, mode: "manual", online: true });
 
     const textos = (await events()).map((event) => event.text);
@@ -87,8 +80,8 @@ describe("applyStatus", () => {
 
   it("ignora campo desconhecido ou inválido sem perder o resto da mensagem", async () => {
     const result = await applyStatus("irrigacao", {
-      soil: 150, // sensor fora da faixa física
-      air: 40, // sensor de outro dispositivo
+      soil: 150,
+      air: 40,
       mode: "turbo",
       firmware: "1.2",
       threshold: 25,

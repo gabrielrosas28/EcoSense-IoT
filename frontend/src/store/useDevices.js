@@ -1,13 +1,6 @@
 import { create } from "zustand";
 import { api } from "../services/api";
 
-/**
- * Fonte única da verdade do estado dos dispositivos.
- *
- * Sidebar, DeviceCard (dashboard) e as páginas de detalhe leem TODOS daqui.
- * Nenhuma tela guarda `on`/`mode`/`threshold` em useState local.
- */
-
 export const DEVICE_ORDER = ["luz", "projetor", "irrigacao", "umidificador"];
 
 const initialDevices = {
@@ -60,7 +53,6 @@ const seedEvents = [
   { id: "e4", device: "projetor", text: "Projetor desligado automaticamente", at: "21:58" },
 ];
 
-/** Qual chave do `reading` guarda o limite de cada dispositivo. */
 const THRESHOLD_KEY = {
   luz: "sleepMin",
   projetor: "autoOffMin",
@@ -68,12 +60,6 @@ const THRESHOLD_KEY = {
   umidificador: "threshold",
 };
 
-/**
- * Dispositivos que o modo automático liga e desliga sozinho. Neles, acionar o
- * botão é um override: passa para o manual, senão a automação desfaz no ciclo
- * seguinte (ex.: desligar o umidificador com o ar abaixo do limite). O
- * desligamento automático do projetor é um recurso à parte e vale nos dois modos.
- */
 export const AUTO_CONTROLLED = new Set(["luz", "irrigacao", "umidificador"]);
 
 let eventSeq = 0;
@@ -85,10 +71,7 @@ const nowLabel = () =>
 export const useDevices = create((set, get) => ({
   devices: initialDevices,
   events: seedEvents,
-  /** Feedback curto de UI ("Enviado por IR: …"). */
   toasts: [],
-
-  // ---------- helpers internos ----------
 
   patchDevice(id, patch) {
     set((s) => {
@@ -112,9 +95,6 @@ export const useDevices = create((set, get) => ({
     }, 2600);
   },
 
-  // ---------- actions (as únicas que mudam estado) ----------
-
-  /** Liga/desliga pelo painel. Em automático, é override: passa antes para o manual. */
   setOn(id, value) {
     const device = get().devices[id];
     if (!device) return;
@@ -125,7 +105,6 @@ export const useDevices = create((set, get) => ({
       get().pushEvent(id, `${device.name} em modo manual (acionamento pelo painel)`);
       get().pushEvent(id, `${device.name} ${value ? "ligado" : "desligado"} pelo painel`);
       get().notify(`${device.name} passou para o modo manual`);
-      // Em sequência: se o power chegasse antes, a automação poderia desfazê-lo.
       api.sendCommand(id, { action: "mode", value: "manual" }).then(() => api.sendCommand(id, power));
       return;
     }
@@ -155,7 +134,6 @@ export const useDevices = create((set, get) => ({
     api.sendCommand(id, { action: "threshold", key, value });
   },
 
-  /** Atualiza leitura/config de um dispositivo. `silent` evita reenviar ao backend. */
   setReading(id, patch, { silent = false } = {}) {
     const device = get().devices[id];
     if (!device) return;
@@ -167,13 +145,6 @@ export const useDevices = create((set, get) => ({
     get().patchDevice(id, { online });
   },
 
-  /**
-   * Chamado pelo WebSocket (services/realtime.js) — só atualiza o store,
-   * nunca reenvia comando ao backend.
-   *
-   * Topico esperado: `ecosense/<deviceId>/status` (contrato MQTT da raiz).
-   * Payload: { on?, mode?, online?, ...leituras }
-   */
   applyIncoming(topic, payload) {
     if (!payload) return;
     const id = String(topic || "")
@@ -193,18 +164,13 @@ export const useDevices = create((set, get) => ({
   },
 }));
 
-/** Lê um dispositivo do store (assina só aquele dispositivo). */
 export const useDevice = (id) => useDevices((s) => s.devices[id]);
 
-/** Lista ordenada para a Sidebar e o Dashboard. */
 export const useDeviceList = () => {
-  // seleciona o mapa (referência estável) e ordena fora do seletor,
-  // senão o snapshot mudaria a cada render.
   const devices = useDevices((s) => s.devices);
   return DEVICE_ORDER.map((id) => devices[id]);
 };
 
-/** Ações não mudam de identidade — pegar direto evita re-render. */
 export const deviceActions = {
   setOn: (...a) => useDevices.getState().setOn(...a),
   toggleOn: (...a) => useDevices.getState().toggleOn(...a),

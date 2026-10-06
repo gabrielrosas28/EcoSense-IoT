@@ -34,7 +34,6 @@ describe("GET /api/routines", () => {
 
 describe("POST /api/routines", () => {
   it("aceita o que a tela de Rotinas envia, e o toggle e a remoção usam o mesmo id", async () => {
-    // Exatamente o objeto de store/useRoutines.js → add(): id gerado na tela.
     const daTela = {
       id: "r-1727790000000-0",
       enabled: true,
@@ -103,7 +102,6 @@ describe("PATCH /api/routines/:id", () => {
   });
 
   it("revalida a rotina inteira depois de aplicar o patch", async () => {
-    // r3 é de presença: trocar só o operador a deixaria inválida.
     const res = await update("r3", { operator: "lt" });
 
     expect(res.status).toBe(400);

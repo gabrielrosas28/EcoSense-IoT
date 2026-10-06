@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { api } from "../services/api";
 
-/** Sensores disponíveis no construtor SE -> ENTÃO. */
 export const SENSORS = [
   { id: "soil", label: "Umidade do solo", unit: "%", device: "irrigacao" },
   { id: "air", label: "Umidade do ar", unit: "%", device: "umidificador" },
@@ -78,7 +77,6 @@ export const useRoutines = create((set, get) => ({
   },
 }));
 
-/** Descreve a rotina em texto — "Se solo menor que 30% então ligar Irrigação". */
 export function describeRoutine(routine, devices) {
   const sensor = SENSORS.find((s) => s.id === routine.sensor);
   const operator = OPERATORS.find((o) => o.id === routine.operator);

@@ -3,11 +3,6 @@ import { DEVICE_SLUGS, isDeviceSlug } from "./contract.ts";
 import { toStatus } from "./devices.ts";
 import type { Simulator } from "./simulator.ts";
 
-/**
- * Console interativo: força cenários sem esperar o acaso.
- * Útil em demonstração ("solo secou → a bomba liga") e para testar o backend.
- */
-
 const AJUDA = `
 Comandos:
   status                         mostra o estado de todos os dispositivos

@@ -20,7 +20,6 @@ import {
 
 const SOURCES = ["HDMI 1", "HDMI 2", "VGA"];
 
-/** Cada tecla do remoto vira um comando IR via api.sendCommand. */
 function sendIR(key, label) {
   api.sendCommand("projetor", { action: "ir", key });
   deviceActions.notify(`Enviado por IR: ${label}`);

@@ -6,16 +6,6 @@ import * as readings from "../repositories/reading.repository.js";
 import { READING_INTERVALS } from "../schemas/device.schemas.js";
 import { getDevice } from "./device.service.js";
 
-/**
- * Histórico dos sensores de um dispositivo, uma série por sensor:
- *
- *   { device, from, to, interval, series: { soil: [{ at, value }, ...] } }
- *
- * Todo sensor pedido aparece em `series`, mesmo sem amostras (lista vazia):
- * o gráfico não precisa tratar chave ausente. Com `interval`, cada ponto é uma
- * janela `{ at, value, min, max, count }`, com `value` = média. Em sensor
- * booleano (`presenca`), a média é a fração do tempo em `true` (0 a 1).
- */
 export async function listReadings(id, { sensor, from, to, interval, limit }) {
   const device = await getDevice(id);
   const sensors = sensorsOf(device, sensor);
@@ -54,7 +44,6 @@ function isBoolean(id, sensor) {
   return DEVICE_CATALOG[id].sensors[sensor] instanceof z.ZodBoolean;
 }
 
-/** Média com 2 casas: 44.333333 → 44.33. */
 function round(value) {
   return Math.round(value * 100) / 100;
 }

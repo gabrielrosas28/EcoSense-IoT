@@ -11,7 +11,6 @@ const auth = authHeader();
 const readings = (id, query = {}) =>
   request(app).get(`/api/devices/${id}/readings`).query(query).set("Authorization", auth);
 
-/** Amostras com horário fixo, longe das 24 h que o seed preenche. */
 async function insert(deviceId, sensor, points) {
   for (const [at, value] of points) {
     await pool.query("INSERT INTO readings (device_id, sensor, value, recorded_at) VALUES ($1, $2, $3, $4)", [
@@ -34,7 +33,7 @@ describe("GET /api/devices/:id/readings", () => {
     expect(Object.keys(res.body.series)).toEqual(["soil"]);
 
     const soil = res.body.series.soil;
-    expect(soil).toHaveLength(96); // seed: uma amostra a cada 15 min
+    expect(soil).toHaveLength(96);
     expect(soil[0]).toEqual({ at: expect.any(String), value: expect.any(Number) });
     const instantes = soil.map((point) => Date.parse(point.at));
     expect(instantes).toEqual([...instantes].sort((a, b) => a - b));
@@ -46,7 +45,7 @@ describe("GET /api/devices/:id/readings", () => {
       ["2026-01-10T10:00:00Z", 50],
       ["2026-01-10T10:05:00Z", 52],
       ["2026-01-10T10:10:00Z", 54],
-      ["2026-01-11T10:00:00Z", 99], // fora do período
+      ["2026-01-11T10:00:00Z", 99],
     ]);
 
     const res = await readings("umidificador", { sensor: "air", ...JAN_10, limit: 2 });
@@ -104,8 +103,8 @@ describe("GET /api/devices/:id/readings", () => {
 
   it("a janela de 1 dia começa à meia-noite do fuso da escola, não em UTC", async () => {
     await insert("irrigacao", "soil", [
-      ["2026-01-10T02:00:00Z", 30], // 23h do dia 9 em São Paulo
-      ["2026-01-10T04:00:00Z", 50], // 1h do dia 10 em São Paulo
+      ["2026-01-10T02:00:00Z", 30],
+      ["2026-01-10T04:00:00Z", 50],
     ]);
 
     const res = await readings("irrigacao", { ...JAN_10, interval: "1d" });
@@ -189,7 +188,6 @@ describe("gravação da série pelo status do dispositivo", () => {
     const antes = (await pool.query("SELECT count(*)::int AS n FROM readings")).rows[0].n;
 
     await applyStatus("irrigacao", { soil: 150, air: 40 });
-    // Last Will: sem leitura, não grava nada.
     await applyStatus("umidificador", { online: false });
 
     expect((await pool.query("SELECT count(*)::int AS n FROM readings")).rows[0].n).toBe(antes);

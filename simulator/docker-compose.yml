@@ -1,5 +1,3 @@
-# Broker MQTT local para o simulador (e, na fase 2, para o backend).
-#   docker compose up -d
 services:
   mosquitto:
     image: eclipse-mosquitto:2

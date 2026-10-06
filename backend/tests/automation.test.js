@@ -11,14 +11,6 @@ import {
 import { applyStatus } from "../src/services/device.service.js";
 import { authHeader } from "./support/auth.js";
 
-/**
- * Motor das rotinas SE → ENTÃO sobre os status do dispositivo (sem broker; a
- * ligação com a ponte MQTT está em mqtt.test.js). Rotinas do seed:
- *   r1  SE solo < 30   ENTÃO ligar irrigação     (ativa)
- *   r2  SE ar < 80     ENTÃO ligar umidificador  (ativa)
- *   r3  SE presença 0  ENTÃO desligar luz        (desativada)
- */
-
 const app = createApp();
 const auth = authHeader();
 
@@ -31,7 +23,6 @@ const device = async (id) => (await api().get(`/api/devices/${id}`)).body;
 const latestEvent = async () => (await api().get("/api/events?limit=1")).body[0];
 const command = (id, body) => api().post(`/api/devices/${id}/command`, body);
 
-/** O status chega, é gravado, e então as rotinas são avaliadas (o que a ponte MQTT faz). */
 const status = async (id, payload) => afterStatus(await applyStatus(id, payload));
 
 let comandos;
@@ -64,7 +55,6 @@ describe("rotinas sobre o status do dispositivo", () => {
     await status("irrigacao", { soil: 25 });
     comandos.length = 0;
 
-    // A bomba desligou sozinha pela trava de tempo e o solo segue seco.
     const results = await status("irrigacao", { on: false, soil: 24 });
 
     expect(results).toEqual([]);
@@ -93,9 +83,9 @@ describe("rotinas sobre o status do dispositivo", () => {
   });
 
   it("não manda comando se o dispositivo já está no estado pedido", async () => {
-    await status("umidificador", { air: 85 }); // condição deixa de valer
+    await status("umidificador", { air: 85 });
 
-    const results = await status("umidificador", { air: 70 }); // volta a valer, mas já está ligado
+    const results = await status("umidificador", { air: 70 });
 
     expect(results).toEqual([{ routine: "r2", fired: false, reason: "já estava ligado" }]);
     expect(comandos).toEqual([]);
@@ -139,6 +129,39 @@ describe("rotinas sobre o status do dispositivo", () => {
     expect((await device("projetor")).on).toBe(false);
   });
 
+  it("uma rotina com erro não impede as outras do mesmo status", async () => {
+    await api().post("/api/routines", { id: "r-luz", sensor: "soil", operator: "lt", value: 30, action: "off", device: "luz" });
+    const falhar = ({ deviceId }) => {
+      if (deviceId === "irrigacao") throw new Error("barramento fora do ar");
+    };
+    deviceBus.prependListener("command", falhar);
+    try {
+      const results = await status("irrigacao", { soil: 25 });
+
+      expect(results).toEqual([
+        expect.objectContaining({ routine: "r1", fired: false, reason: "erro: barramento fora do ar" }),
+        { routine: "r-luz", fired: true },
+      ]);
+      expect((await device("luz")).on).toBe(false);
+    } finally {
+      deviceBus.off("command", falhar);
+    }
+  });
+
+  it("'igual a' em umidade vale com leitura decimal perto do valor", async () => {
+    await api().post("/api/routines", { id: "r-eq", sensor: "soil", operator: "eq", value: 40, action: "off", device: "luz" });
+
+    expect(await status("irrigacao", { soil: 40.3 })).toEqual([{ routine: "r-eq", fired: true }]);
+    expect((await device("luz")).on).toBe(false);
+    expect(await status("irrigacao", { soil: 39.8 })).toEqual([]);
+  });
+
+  it("'igual a' em umidade dispara quando a leitura pula por cima do valor", async () => {
+    await api().post("/api/routines", { id: "r-eq", sensor: "air", operator: "eq", value: 60, action: "off", device: "luz" });
+
+    expect(await status("umidificador", { air: 61 })).toEqual([{ routine: "r-eq", fired: true }]);
+  });
+
   it("status de dispositivo sem sensor não avalia nada", async () => {
     expect(await status("projetor", { on: true })).toEqual([]);
   });
@@ -163,13 +186,13 @@ describe("rotinas de horário", () => {
   });
 
   it("o relógio usa a hora do fuso da escola e só age na virada", async () => {
-    let agora = new Date("2026-10-06T09:59:00Z"); // 06:59 em São Paulo
+    let agora = new Date("2026-10-06T09:59:00Z");
     const relogio = createAutomationClock({ now: () => agora, log: { info() {}, error() {} } });
 
-    await relogio.check(); // primeira leitura: só memoriza a hora
+    await relogio.check();
     expect(comandos).toEqual([]);
 
-    agora = new Date("2026-10-06T10:00:00Z"); // 07:00 em São Paulo
+    agora = new Date("2026-10-06T10:00:00Z");
     await relogio.check();
 
     expect(localHour(agora)).toBe(7);

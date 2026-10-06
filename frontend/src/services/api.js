@@ -1,15 +1,5 @@
-/**
- * REST com o backend. O frontend NUNCA fala MQTT direto —
- * o backend traduz MQTT <-> REST/WebSocket.
- *
- * Fase 1 (mock): sem backend no ar, as chamadas de dispositivo/rotina falham
- * silenciosamente e a UI continua funcionando pelo store. Autenticação é a
- * exceção: erros de login sobem para a tela tratar.
- */
-
 const BASE = import.meta.env.VITE_API_URL ?? "/api";
 
-/** Erro HTTP com a mensagem que o backend mandou em `{ error }`. */
 export class ApiError extends Error {
   constructor(status, message, details) {
     super(message);
@@ -18,13 +8,11 @@ export class ApiError extends Error {
     this.details = details;
   }
 
-  /** Backend fora do ar: falha de rede ou gateway do proxy do Vite. */
   get offline() {
     return this.status === 0 || this.status === 502 || this.status === 503 || this.status === 504;
   }
 }
 
-// Token da sessão em memória — quem define é o store de auth (store/useAuth.js).
 let authToken = null;
 let onUnauthorized = null;
 
@@ -32,7 +20,6 @@ export function setAuthToken(token) {
   authToken = token;
 }
 
-/** Chamado quando uma rota autenticada responde 401 (token expirado/inválido). */
 export function setUnauthorizedHandler(handler) {
   onUnauthorized = handler;
 }
@@ -57,16 +44,11 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  /**
-   * Envia um comando para um dispositivo. O backend publica no tópico
-   * de comando correspondente (contrato MQTT da raiz).
-   */
   sendCommand(id, command) {
     return request(`/devices/${id}/command`, {
       method: "POST",
       body: JSON.stringify(command),
     }).catch((err) => {
-      // Sem backend ainda: registra e segue — o store já foi atualizado.
       console.warn(`[api] comando não entregue (${id})`, command, err.message);
       return null;
     });
@@ -76,10 +58,6 @@ export const api = {
     return request("/devices").catch(() => null);
   },
 
-  /**
-   * Histórico dos sensores: `{ device, from, to, interval, series: { soil: [{ at, value }] } }`.
-   * `params`: `sensor`, `from`/`to` (ISO), `interval` (1m, 5m, 15m, 1h, 1d), `limit`.
-   */
   getReadings(id, params = {}) {
     const query = new URLSearchParams(params).toString();
     return request(`/devices/${id}/readings${query ? `?${query}` : ""}`).catch(() => null);
@@ -107,7 +85,6 @@ export const api = {
     return request(`/routines/${id}`, { method: "DELETE" }).catch(() => null);
   },
 
-  /** `{ token, user }` — lança ApiError (401 credenciais, 400 validação...). */
   login(email, password) {
     return request("/auth/login", {
       method: "POST",
@@ -115,7 +92,6 @@ export const api = {
     });
   },
 
-  /** Cadastro: `{ token, user }`, já logado. 409 se o e-mail já existe, 400 validação. */
   register(name, email, password) {
     return request("/auth/register", {
       method: "POST",
@@ -123,7 +99,6 @@ export const api = {
     });
   },
 
-  /** Usuário do token atual. */
   me() {
     return request("/auth/me");
   },

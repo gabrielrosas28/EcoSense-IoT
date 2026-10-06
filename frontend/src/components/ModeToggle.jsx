@@ -3,7 +3,6 @@ const OPTIONS = [
   { id: "manual", label: "Manual" },
 ];
 
-/** Segmentado Automático/Manual — `mode` vem do store, nunca de useState local. */
 export default function ModeToggle({ mode, onChange, label = "Modo de operação" }) {
   return (
     <div className="segmented" role="group" aria-label={label}>

@@ -13,12 +13,10 @@ import Projetor from "./pages/Projetor";
 import Rotinas from "./pages/Rotinas";
 import Umidificador from "./pages/Umidificador";
 
-/** Layout do app: Sidebar fixa + conteúdo da rota. */
 function AppLayout() {
   const user = useAuth((s) => s.user);
   const location = useLocation();
 
-  // WebSocket ligado enquanto houver sessão.
   useEffect(() => {
     if (!user) return undefined;
     return startRealtime();
@@ -37,7 +35,6 @@ function AppLayout() {
   );
 }
 
-/** Telas abertas (login e cadastro): quem já tem sessão vai direto para o app. */
 function PublicRoute({ children }) {
   const user = useAuth((s) => s.user);
   const location = useLocation();

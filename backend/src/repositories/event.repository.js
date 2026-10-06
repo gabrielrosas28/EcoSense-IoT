@@ -1,7 +1,5 @@
 import { pool } from "../database/pool.js";
 
-// SQL do histórico de eventos (EventList do dashboard).
-
 export async function create({ deviceId = null, message, source = "system" }, db = pool) {
   await db.query("INSERT INTO events (device_id, message, source) VALUES ($1, $2, $3)", [
     deviceId,
@@ -10,7 +8,6 @@ export async function create({ deviceId = null, message, source = "system" }, db
   ]);
 }
 
-/** Mais recentes primeiro; `deviceId` opcional filtra por dispositivo. */
 export async function findRecent({ limit, deviceId = null }, db = pool) {
   const { rows } = await db.query(
     `SELECT id, device_id, message, source, created_at

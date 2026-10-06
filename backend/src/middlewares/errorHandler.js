@@ -1,6 +1,5 @@
 import { HttpError } from "../lib/httpError.js";
 
-/** Erros do Postgres causados pela requisição, não pelo servidor. */
 const DATABASE_ERRORS = {
   "23505": [409, "Registro duplicado"],
   "23503": [400, "Referência a um registro que não existe"],
@@ -8,18 +7,11 @@ const DATABASE_ERRORS = {
   "22P02": [400, "Valor em formato inválido"],
 };
 
-/** Erros do leitor de JSON do Express (`express.json()`). */
 const BODY_ERRORS = {
   "entity.parse.failed": "O corpo da requisição não é um JSON válido",
   "entity.too.large": "O corpo da requisição é grande demais",
 };
 
-/**
- * Último middleware: toda resposta de erro da API sai daqui, sempre como
- * `{ error, details? }`. Erro inesperado vira 500 sem vazar detalhe interno.
- *
- * O Express reconhece um error handler pelos 4 parâmetros: não remova `_next`.
- */
 export function errorHandler(err, req, res, _next) {
   if (err instanceof HttpError) {
     res.status(err.status).json({ error: err.message, ...(err.details && { details: err.details }) });

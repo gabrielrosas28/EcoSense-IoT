@@ -1,19 +1,11 @@
 import { DEVICE_SLUGS, type DeviceSlug, isDeviceSlug } from "./contract.ts";
 
-/**
- * Configuração via variáveis de ambiente (veja `.env.example`).
- * Valor inválido derruba o processo no boot, com mensagem clara.
- */
-
 export interface Config {
   mqttUrl: string;
   mqttUsername: string | undefined;
   mqttPassword: string | undefined;
-  /** De quanto em quanto tempo (real) a física avança. */
   tickMs: number;
-  /** Multiplicador do tempo: 60 = um minuto simulado por segundo real. */
   speed: number;
-  /** Intervalo do status periódico (mudanças discretas saem na hora). */
   publishMs: number;
   devices: DeviceSlug[];
   seed: number | undefined;

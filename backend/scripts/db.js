@@ -1,4 +1,3 @@
-// Tarefas de banco: npm run db:migrate | db:seed | db:reset
 import { config } from "../src/config/env.js";
 import { migrate } from "../src/database/migrator.js";
 import { closePool, pool } from "../src/database/pool.js";
@@ -12,7 +11,6 @@ const tasks = {
 
   seed: () => seed(pool),
 
-  /** Apaga TUDO e recria do zero. Só para desenvolvimento. */
   async reset() {
     if (config.isProduction) {
       throw new Error("db:reset apaga o banco inteiro e está bloqueado com NODE_ENV=production");

@@ -3,12 +3,6 @@ import { startConsole } from "./console.ts";
 import { seededRng } from "./devices.ts";
 import { Simulator } from "./simulator.ts";
 
-/**
- * Simulador dos sensores EcoSense — faz o papel do ESP32 no broker MQTT.
- *
- *   npm start          (lê .env, se existir)
- */
-
 let config;
 try {
   config = loadConfig();

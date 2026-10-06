@@ -56,8 +56,6 @@ a {
   white-space: nowrap;
 }
 
-/* ---------- layout ---------- */
-
 .layout {
   display: flex;
   min-height: 100%;
@@ -89,8 +87,6 @@ a {
   font-size: 14px;
   margin-top: 2px;
 }
-
-/* ---------- sidebar ---------- */
 
 .sidebar {
   width: var(--sidebar-w);
@@ -257,8 +253,6 @@ a {
   color: #fff;
 }
 
-/* ---------- cards ---------- */
-
 .card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -309,8 +303,6 @@ a {
   justify-content: space-between;
   gap: 16px;
 }
-
-/* ---------- device card ---------- */
 
 .device-card {
   display: flex;
@@ -365,8 +357,6 @@ a {
   margin-left: 2px;
 }
 
-/* ---------- status pill ---------- */
-
 .pill {
   display: inline-flex;
   align-items: center;
@@ -397,8 +387,6 @@ a {
   background: currentColor;
   opacity: 0.85;
 }
-
-/* ---------- power button ---------- */
 
 .power {
   width: 108px;
@@ -436,8 +424,6 @@ a {
   text-align: center;
 }
 
-/* ---------- mode toggle (segmentado) ---------- */
-
 .segmented {
   display: inline-flex;
   padding: 4px;
@@ -462,8 +448,6 @@ a {
   color: var(--green-dark);
   box-shadow: 0 1px 4px rgba(15, 38, 26, 0.12);
 }
-
-/* ---------- switch ---------- */
 
 .switch {
   width: 46px;
@@ -499,8 +483,6 @@ a {
   opacity: 0.5;
   cursor: not-allowed;
 }
-
-/* ---------- slider ---------- */
 
 .slider-head {
   display: flex;
@@ -562,8 +544,6 @@ input[type="range"]::-moz-range-thumb {
   margin-top: 6px;
 }
 
-/* ---------- gauge ---------- */
-
 .gauge {
   display: flex;
   align-items: center;
@@ -595,8 +575,6 @@ input[type="range"]::-moz-range-thumb {
   font-size: 12px;
   color: var(--text-2);
 }
-
-/* ---------- listas / eventos ---------- */
 
 .event-list {
   list-style: none;
@@ -636,8 +614,6 @@ input[type="range"]::-moz-range-thumb {
   color: var(--muted);
   margin-top: 2px;
 }
-
-/* ---------- remoto do projetor ---------- */
 
 .remote {
   display: flex;
@@ -741,8 +717,6 @@ input[type="range"]::-moz-range-thumb {
 .remote-key.is-on {
   background: var(--green-bright);
 }
-
-/* ---------- rotinas ---------- */
 
 .builder {
   display: flex;
@@ -856,8 +830,6 @@ input:hover {
   color: var(--danger);
 }
 
-/* ---------- gráfico de umidade ---------- */
-
 .chart-legend {
   display: flex;
   gap: 18px;
@@ -895,8 +867,6 @@ input:hover {
   font-size: 14px;
   padding: 28px 0;
 }
-
-/* ---------- login ---------- */
 
 .login {
   min-height: 100%;
@@ -988,8 +958,6 @@ input[aria-invalid="true"] {
   color: var(--muted);
 }
 
-/* ---------- toast ---------- */
-
 .toast-wrap {
   position: fixed;
   bottom: 24px;
@@ -1020,8 +988,6 @@ input[aria-invalid="true"] {
     transform: translateY(8px);
   }
 }
-
-/* ---------- responsivo ---------- */
 
 @media (max-width: 1100px) {
   .grid-devices {

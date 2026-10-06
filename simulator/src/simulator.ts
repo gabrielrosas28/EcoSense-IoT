@@ -4,16 +4,6 @@ import { type DeviceCommand, type DeviceSlug, TOPIC } from "./contract.ts";
 import { advance, applyCommand, createState, type Rng, type SimState, toStatus } from "./devices.ts";
 import { log } from "./log.ts";
 
-/**
- * Liga o modelo (`devices.ts`) ao broker.
- *
- * Um cliente MQTT por dispositivo, como se cada um fosse um ESP32: cada um tem
- * o próprio Last Will (`{ "online": false }` retido no tópico de status), então
- * derrubar um dispositivo não derruba os outros e o backend é avisado pelo
- * broker, não pelo simulador.
- *
- * Status sai retido (QoS 1): quem assinar depois recebe o último estado na hora.
- */
 export class Simulator {
   readonly state: SimState = createState();
   private readonly clients = new Map<DeviceSlug, MqttClient>();
@@ -35,7 +25,6 @@ export class Simulator {
     this.publishTimer = setInterval(() => this.publishAll(), this.config.publishMs);
   }
 
-  /** Desliga com elegância: avisa offline (retido) e fecha as conexões. */
   async stop(): Promise<void> {
     clearInterval(this.tickTimer);
     clearInterval(this.publishTimer);
@@ -52,8 +41,6 @@ export class Simulator {
     );
     this.clients.clear();
   }
-
-  // ---------- conexão ----------
 
   private connect(slug: DeviceSlug): void {
     const statusTopic = TOPIC.status(slug);
@@ -73,7 +60,6 @@ export class Simulator {
     });
     this.clients.set(slug, client);
 
-    // Sem broker o mqtt.js tenta de novo a cada 2 s: avisa uma vez só, não a cada tentativa.
     let avisouErro = false;
 
     client.on("connect", () => {
@@ -93,8 +79,6 @@ export class Simulator {
     });
   }
 
-  // ---------- entrada: comandos ----------
-
   private onCommand(slug: DeviceSlug, raw: string): void {
     let command: DeviceCommand;
     try {
@@ -110,11 +94,8 @@ export class Simulator {
     if (result.ok) log.info(slug, result.message);
     else log.warn(slug, result.message);
 
-    // O status é a confirmação: o backend/painel vê o estado que o device aceitou.
     this.publish(slug);
   }
-
-  // ---------- saída: status ----------
 
   private step(dt: number): void {
     const changes = advance(this.state, dt, this.rng);
@@ -123,7 +104,6 @@ export class Simulator {
       log.info(change.slug, change.message);
       mudaram.add(change.slug);
     }
-    // Presença mexe na luz, mas o projetor também usa — publica os dois.
     if (mudaram.has("luz")) mudaram.add("projetor");
     for (const slug of mudaram) this.publish(slug);
   }
@@ -132,7 +112,6 @@ export class Simulator {
     for (const slug of this.config.devices) this.publish(slug, this.config.verbose);
   }
 
-  /** Publica o status atual. `verbose = false` evita poluir o log com o periódico. */
   publish(slug: DeviceSlug, verbose = true): void {
     const client = this.clients.get(slug);
     if (!client?.connected || !this.state[slug].online) return;
@@ -141,12 +120,6 @@ export class Simulator {
     if (verbose) log.status(slug, payload);
   }
 
-  // ---------- falhas simuladas (console) ----------
-
-  /**
-   * Simula queda de energia: derruba o socket sem DISCONNECT, então o broker
-   * dispara o Last Will — exatamente o que aconteceria com o ESP32.
-   */
   goOffline(slug: DeviceSlug): void {
     const client = this.clients.get(slug);
     if (!client || !this.state[slug].online) return;

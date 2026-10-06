@@ -1,6 +1,3 @@
-// Validação local das telas de login e cadastro: evita ida ao servidor com dado
-// que ele recusaria. Os limites são os mesmos do backend (src/schemas/auth.schemas.js).
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const MIN_SENHA = 6;
 const MIN_NOME = 2;
@@ -23,7 +20,6 @@ export function validateName(name) {
   return undefined;
 }
 
-/** Só os campos com erro: `{}` quando está tudo certo. */
 export function onlyErrors(errors) {
   return Object.fromEntries(Object.entries(errors).filter(([, erro]) => erro));
 }

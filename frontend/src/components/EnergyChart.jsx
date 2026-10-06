@@ -8,7 +8,6 @@ import {
   YAxis,
 } from "recharts";
 
-/** Dados de exemplo do protótipo — substituídos pelo backend quando existir. */
 const SAMPLE = [
   { dia: "Seg", consumo: 4.2, economia: 1.1 },
   { dia: "Ter", consumo: 3.8, economia: 1.6 },

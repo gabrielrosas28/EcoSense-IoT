@@ -2,21 +2,8 @@ import { readdir, readFile } from "node:fs/promises";
 
 const MIGRATIONS_DIR = new URL("./migrations/", import.meta.url);
 
-// Trava do Postgres (advisory lock): duas instâncias subindo ao mesmo tempo
-// não aplicam a mesma migration duas vezes.
 const LOCK_KEY = 20_261_001;
 
-/**
- * Aplica, em ordem alfabética, os arquivos `migrations/*.sql` que ainda não
- * constam em `schema_migrations`. Cada arquivo roda numa transação própria:
- * ou entra inteiro, ou não entra.
- *
- * Recebe o pool em vez de importá-lo para poder rodar sem a configuração da
- * aplicação (os testes usam um banco próprio).
- *
- * @param {import("pg").Pool} pool
- * @returns {Promise<string[]>} nomes das migrations aplicadas nesta chamada
- */
 export async function migrate(pool, { log = console.info } = {}) {
   const client = await pool.connect();
   try {
@@ -48,7 +35,6 @@ export async function migrate(pool, { log = console.info } = {}) {
   }
 }
 
-/** Migrations que existem em disco e ainda não foram aplicadas. */
 export async function pendingMigrations(db) {
   const { rows } = await db.query("SELECT to_regclass('schema_migrations') IS NOT NULL AS ready");
   const applied = rows[0].ready

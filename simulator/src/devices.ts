@@ -1,17 +1,7 @@
 import type { DeviceCommand, DeviceSlug, DeviceStatus, Mode } from "./contract.ts";
 
-/**
- * Modelo físico dos 4 subsistemas — lógica pura, sem MQTT e sem relógio.
- *
- * `tick` avança a simulação `dt` segundos (tempo simulado) e `applyCommand`
- * aplica um comando do painel. Os dois devolvem o que mudou, e quem chama
- * (o bus) decide o que publicar. Assim dá para testar sem broker.
- */
-
-/** Gerador pseudoaleatório: `Math.random` em produção, semeado nos testes. */
 export type Rng = () => number;
 
-/** mulberry32 — pequeno, determinístico, bom o bastante para ruído de sensor. */
 export function seededRng(seed: number): Rng {
   let a = seed >>> 0;
   return () => {
@@ -23,24 +13,16 @@ export function seededRng(seed: number): Rng {
   };
 }
 
-// ---------- constantes físicas (por segundo simulado) ----------
-
-/** Tempo médio até alguém entrar / sair da sala. */
 const PRESENCA_MEDIA_CHEGADA_S = 4 * 60;
 const PRESENCA_MEDIA_SAIDA_S = 8 * 60;
 
-/** Solo seca devagar e encharca rápido com a bomba ligada. */
 const SOLO_SECAGEM_POR_S = 0.02;
 const SOLO_BOMBA_POR_S = 1.5;
 
-/** Ar tende à umidade ambiente; o umidificador empurra para cima. */
 const AR_AMBIENTE = 50;
 const AR_RETORNO_POR_S = 0.004;
 const AR_UMIDIFICADOR_POR_S = 0.15;
-/** Histerese: desliga só quando passar o limite com folga, sem ficar piscando. */
 const AR_HISTERESE = 5;
-
-// ---------- estado ----------
 
 interface Base {
   on: boolean;
@@ -61,7 +43,6 @@ export interface SimState {
   umidificador: Base & { reading: { air: number; threshold: number } };
 }
 
-/** Mesmo estado inicial do seed do backend e do store do frontend. */
 export function createState(): SimState {
   return {
     luz: {
@@ -94,17 +75,14 @@ export function createState(): SimState {
   };
 }
 
-/** Payload de status de um dispositivo, no formato do contrato. */
 export function toStatus(state: SimState, slug: DeviceSlug): DeviceStatus {
   const d = state[slug];
   const reading: Record<string, unknown> = { ...d.reading };
-  // Sensores saem inteiros, como o ESP32 mandaria (e como a UI exibe).
   if ("soil" in reading) reading.soil = Math.round(Number(reading.soil));
   if ("air" in reading) reading.air = Math.round(Number(reading.air));
   return { on: d.on, mode: d.mode, online: d.online, ...reading };
 }
 
-/** Resultado de um passo: quem mudou "de verdade" (liga/desliga, presença…) e por quê. */
 export interface Change {
   slug: DeviceSlug;
   message: string;
@@ -112,21 +90,12 @@ export interface Change {
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
-/** Probabilidade de um evento de tempo médio `media` acontecer em `dt` segundos. */
 const chance = (dt: number, media: number) => 1 - Math.exp(-dt / media);
 
-/** Ruído uniforme em [-amp, amp]. */
 const noise = (rng: Rng, amp: number) => (rng() * 2 - 1) * amp;
 
-// ---------- passo da simulação ----------
-
-/** Maior passo de física: acima disso a integração "pula" limites e oscila. */
 export const MAX_STEP_S = 1;
 
-/**
- * Avança `dt` segundos em sub-passos de até `MAX_STEP_S` — assim acelerar o
- * tempo (SIM_SPEED alto) não muda o comportamento, só a velocidade.
- */
 export function advance(state: SimState, dt: number, rng: Rng): Change[] {
   const changes: Change[] = [];
   for (let restante = dt; restante > 0; restante -= MAX_STEP_S) {
@@ -143,7 +112,6 @@ export function tick(state: SimState, dt: number, rng: Rng): Change[] {
     changes.push({ slug, message });
   };
 
-  // Presença: um único sensor PIR na sala, compartilhado por luz e projetor.
   const luz = state.luz;
   if (luz.online) {
     const presente = luz.reading.presenca;
@@ -155,7 +123,6 @@ export function tick(state: SimState, dt: number, rng: Rng): Change[] {
   }
   const presenca = luz.reading.presenca;
 
-  // Iluminação: no automático, acende com presença e apaga após `sleepMin` sem ninguém.
   if (luz.online) {
     luz.semPresencaS = presenca ? 0 : luz.semPresencaS + dt;
     if (luz.mode === "auto") {
@@ -166,7 +133,6 @@ export function tick(state: SimState, dt: number, rng: Rng): Change[] {
     }
   }
 
-  // Projetor: desligamento automático vale em qualquer modo (é um recurso à parte).
   const proj = state.projetor;
   if (proj.online) {
     proj.semPresencaS = presenca || !proj.on ? 0 : proj.semPresencaS + dt;
@@ -175,7 +141,6 @@ export function tick(state: SimState, dt: number, rng: Rng): Change[] {
     }
   }
 
-  // Irrigação: solo seca; abaixo do limite (auto) liga a bomba por até `maxPumpSec`.
   const irr = state.irrigacao;
   if (irr.online) {
     const r = irr.reading;
@@ -183,7 +148,6 @@ export function tick(state: SimState, dt: number, rng: Rng): Change[] {
     if (irr.on) {
       r.soil = clamp(r.soil + SOLO_BOMBA_POR_S * dt, 0, 100);
       irr.bombaS += dt;
-      // Trava de segurança: nunca passa do tempo máximo, nem no manual.
       if (irr.bombaS >= r.maxPumpSec) {
         set("irrigacao", false, `bomba desligada após ${Math.round(irr.bombaS)} s`);
       }
@@ -193,7 +157,6 @@ export function tick(state: SimState, dt: number, rng: Rng): Change[] {
     }
   }
 
-  // Umidificador: ar volta à umidade ambiente; liga abaixo do limite (auto).
   const umi = state.umidificador;
   if (umi.online) {
     const r = umi.reading;
@@ -212,15 +175,11 @@ export function tick(state: SimState, dt: number, rng: Rng): Change[] {
   return changes;
 }
 
-// ---------- comandos ----------
-
 export interface CommandResult {
-  /** `false` quando o comando foi ignorado (inválido ou não se aplica). */
   ok: boolean;
   message: string;
 }
 
-/** Chaves que o painel pode ajustar, por dispositivo, e o tipo esperado. */
 const CONFIG_KEYS: Record<DeviceSlug, Record<string, "number" | "boolean" | "string">> = {
   luz: { sleepMin: "number" },
   projetor: { fonte: "string", autoOff: "boolean", autoOffMin: "number" },
@@ -242,7 +201,6 @@ export function applyCommand(
     case "power": {
       const on = command.value === "on" || command.value === true;
       d.on = on;
-      // Ligar zera os contadores: a bomba ganha um ciclo novo, o timer de ausência recomeça.
       if (slug === "irrigacao") state.irrigacao.bombaS = 0;
       if (slug === "luz") state.luz.semPresencaS = 0;
       if (slug === "projetor") state.projetor.semPresencaS = 0;
@@ -281,7 +239,6 @@ export function applyCommand(
         state.projetor.reading.fonte = fonte;
         return { ok: true, message: `IR fonte → ${fonte}` };
       }
-      // d-pad, OK, menu, voltar, volume: o projetor "recebe", sem estado a reportar.
       return { ok: true, message: `IR "${key}" recebido` };
     }
 
@@ -290,7 +247,6 @@ export function applyCommand(
   }
 }
 
-/** Aplica só as chaves conhecidas e com o tipo certo; o resto é ignorado. */
 function patchReading(
   slug: DeviceSlug,
   reading: Record<string, unknown>,

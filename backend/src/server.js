@@ -5,8 +5,6 @@ import { closePool, pool, waitForDatabase } from "./database/pool.js";
 import { mqttBridge } from "./mqtt/index.js";
 import { createAutomationClock } from "./services/automation.service.js";
 
-// Bootstrap: banco → broker MQTT → HTTP → desligamento limpo.
-
 try {
   await waitForDatabase();
 } catch (err) {
@@ -20,11 +18,9 @@ if (pending.length > 0) {
   console.warn(`[db] migrations pendentes: ${pending.join(", ")}. Rode: npm run db:migrate`);
 }
 
-// Não espera o broker: sem ele a API funciona e a ponte reconecta sozinha.
 if (mqttBridge) mqttBridge.start();
 else console.warn("[mqtt] MQTT_URL vazio: os comandos não serão entregues aos dispositivos");
 
-// Rotinas SE horário → ENTÃO: confere a hora local a cada minuto.
 const automationClock = createAutomationClock();
 automationClock.start();
 
@@ -44,7 +40,6 @@ async function shutdown(signal) {
   closing = true;
   console.info(`[api] ${signal} recebido, encerrando...`);
 
-  // Se alguma conexão segurar o encerramento, desiste depois de 10 s.
   setTimeout(() => process.exit(1), 10_000).unref();
   server.close(async () => {
     await automationClock.stop();

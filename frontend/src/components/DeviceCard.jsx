@@ -4,7 +4,6 @@ import { DEVICE_ICON } from "./deviceIcons";
 import StatusPill from "./StatusPill";
 import Switch from "./Switch";
 
-/** Resumo curto da leitura de cada subsistema. */
 function summary(device) {
   const r = device.reading;
   switch (device.id) {
@@ -29,10 +28,6 @@ function summary(device) {
   }
 }
 
-/**
- * Card do Dashboard. Lê o dispositivo do store, então o status muda
- * junto com o menu lateral e a tela de detalhe.
- */
 export default function DeviceCard({ id }) {
   const device = useDevice(id);
   if (!device) return null;

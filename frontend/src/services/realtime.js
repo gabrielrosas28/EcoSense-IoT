@@ -1,12 +1,5 @@
 import { useDevices } from "../store/useDevices";
 
-/**
- * WebSocket com o backend: cada mensagem vira `applyIncoming(topic, payload)`.
- * O backend repassa os tópicos/payloads do contrato MQTT (CLAUDE.md da raiz).
- *
- * Mensagem esperada: { "topic": "ecosense/luz/status", "payload": { "on": true } }
- */
-
 const WS_URL =
   import.meta.env.VITE_WS_URL ??
   `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`;
@@ -59,7 +52,6 @@ export function connect() {
   };
 
   socket.onerror = () => {
-    // onclose vem logo depois e cuida do retry.
     socket?.close();
   };
 }
@@ -72,7 +64,6 @@ export function disconnect() {
   socket = null;
 }
 
-/** Usado pelo App: liga o realtime enquanto o app estiver montado. */
 export function startRealtime() {
   stopped = false;
   connect();

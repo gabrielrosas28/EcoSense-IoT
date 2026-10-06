@@ -19,16 +19,6 @@ export async function getDevice(id) {
   return device;
 }
 
-/**
- * Comando do painel ou de uma rotina: confere se o dispositivo aceita, grava o
- * novo estado, registra no histórico e entrega ao barramento, que publica no MQTT.
- *
- * O estado gravado é o pedido. O status que o dispositivo publica de volta
- * (`applyStatus`) é a confirmação e corrige o banco se ele recusar.
- *
- * `origin` diz quem mandou, para o histórico: o painel por padrão, ou
- * `{ source: "routine", via: 'pela rotina "..."' }` quando é uma automação.
- */
 export async function sendCommand(id, command, { source = "user", via = "pelo painel" } = {}) {
   const current = await getDevice(id);
   const { patch, event } = interpret(current, command, via);
@@ -46,20 +36,6 @@ export async function sendCommand(id, command, { source = "user", via = "pelo pa
   return { device, topic };
 }
 
-/**
- * Status publicado pelo dispositivo em `ecosense/<id>/status`: é a verdade
- * sobre o hardware. Grava o estado, guarda cada medição dos sensores na série
- * temporal (`readings`, dos gráficos) e registra no histórico o que mudou sem
- * passar pelo painel (ligou ou desligou sozinho, caiu, voltou). Não publica
- * comando de volta, senão backend e dispositivo entram em laço; quem decide
- * se uma rotina dispara é o `automation.service`, com o `previous` devolvido aqui.
- *
- * Campo desconhecido ou inválido é ignorado sem descartar o resto: um sensor
- * com defeito não pode esconder o estado dos outros.
- *
- * @returns {Promise<{ device: object, previous: object, ignored: string[] } | null>}
- *   estado depois e antes do status, ou `null` se o dispositivo não existe
- */
 export async function applyStatus(id, payload) {
   const { patch, samples, ignored } = readStatus(id, payload);
 
@@ -87,7 +63,6 @@ function readStatus(id, payload) {
   const readingFields = { ...catalog.settings, ...catalog.sensors };
   const patch = {};
   const reading = {};
-  // Medições para a série temporal; booleano vira 0/1, como nas rotinas.
   const samples = {};
   const ignored = [];
 
@@ -103,8 +78,6 @@ function readStatus(id, payload) {
     }
   }
 
-  // Qualquer mensagem prova que o dispositivo está vivo, menos o Last Will
-  // que o broker publica quando a conexão cai: `{ "online": false }`.
   patch.online ??= true;
   patch.seen = patch.online;
   if (Object.keys(reading).length > 0) patch.reading = reading;
@@ -112,7 +85,6 @@ function readStatus(id, payload) {
   return { patch, samples, ignored };
 }
 
-/** Mudanças que o dashboard precisa contar. Heartbeat sem mudança não gera nada. */
 function statusEvents(before, after) {
   const catalog = DEVICE_CATALOG[after.id] ?? NO_CATALOG;
   const messages = [];
@@ -125,11 +97,6 @@ function statusEvents(before, after) {
   return messages;
 }
 
-/**
- * Traduz o comando em patch de estado e, quando muda algo visível no
- * dashboard (liga/desliga e modo), em texto para o histórico. Ajustes de
- * slider não viram evento: um arraste geraria dezenas deles.
- */
 function interpret(device, command, via) {
   const catalog = DEVICE_CATALOG[device.id] ?? NO_CATALOG;
 
@@ -160,7 +127,6 @@ function interpret(device, command, via) {
   }
 }
 
-/** Projetor: `source:<fonte>` troca a fonte; as demais teclas só são repassadas. */
 function interpretInfrared(device, catalog, key) {
   if (!catalog.infrared) {
     throw HttpError.badRequest(`${device.name} não tem controle por infravermelho`);
@@ -177,7 +143,6 @@ function interpretInfrared(device, catalog, key) {
   return {};
 }
 
-/** Só aceita chaves que o painel pode ajustar, nos limites de cada uma. */
 function checkSettings(device, catalog, settings) {
   if (Object.keys(settings).length === 0) {
     throw HttpError.badRequest("Nenhum ajuste informado");
@@ -189,7 +154,6 @@ function checkSettings(device, catalog, settings) {
   return result.data;
 }
 
-/** "ligada"/"desligado"... com a concordância do nome do dispositivo. */
 function stateWord(on, catalog) {
   return (on ? "ligad" : "desligad") + (catalog.feminine ? "a" : "o");
 }

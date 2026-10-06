@@ -1,12 +1,8 @@
 import { pool } from "../database/pool.js";
 
-// SQL das rotinas. Devolve objetos no formato do store do frontend
-// (store/useRoutines.js): `device` é o id do dispositivo.
-
 const COLUMNS = "id, sensor, operator, value, action, device_id, enabled, created_at";
 
 export async function findAll(db = pool) {
-  // Mais antigas primeiro: o frontend acrescenta rotinas novas no fim da lista.
   const { rows } = await db.query(`SELECT ${COLUMNS} FROM routines ORDER BY created_at, id`);
   return rows.map(toRoutine);
 }
@@ -37,7 +33,6 @@ export async function update(id, routine, db = pool) {
   return rows[0] ? toRoutine(rows[0]) : null;
 }
 
-/** Devolve `true` se apagou alguma coisa. */
 export async function remove(id, db = pool) {
   const { rowCount } = await db.query("DELETE FROM routines WHERE id = $1", [id]);
   return rowCount > 0;

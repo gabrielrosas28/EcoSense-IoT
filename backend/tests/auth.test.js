@@ -43,7 +43,6 @@ describe("POST /api/auth/login", () => {
   });
 
   it("dá a mesma resposta para e-mail que não existe", async () => {
-    // Mensagem igual de propósito: não revela quais e-mails estão cadastrados.
     const res = await login({ email: "ninguem@ecosense.local", password: DEV_USER.password });
 
     expect(res.status).toBe(401);

@@ -2,7 +2,6 @@ import { z } from "../lib/zod.js";
 
 export const deviceParams = z.object({ id: z.string().max(40) });
 
-/** Janelas de agregação aceitas em `?interval=` (rótulo → intervalo do Postgres). */
 export const READING_INTERVALS = {
   "1m": "1 minute",
   "5m": "5 minutes",
@@ -13,11 +12,6 @@ export const READING_INTERVALS = {
 
 const instant = z.iso.datetime({ offset: true }).transform((value) => new Date(value));
 
-/**
- * Histórico de leituras. Sem `from`/`to`, as últimas 24 h. Sem `sensor`, todos
- * os sensores do dispositivo. Sem `interval`, as amostras cruas; com ele, uma
- * média por janela (o que o gráfico quer para períodos longos).
- */
 export const readingsQuery = z
   .object({
     sensor: z.string().min(1).max(40).optional(),
@@ -35,11 +29,6 @@ export const readingsQuery = z
 
 const scalar = z.union([z.string().max(100), z.number(), z.boolean()]);
 
-/**
- * Comandos do painel, no formato que `api.sendCommand` envia (frontend) e que
- * o simulador/ESP32 recebe em `ecosense/<id>/cmd`. O que cada dispositivo
- * aceita de fato é conferido no service, com o catálogo de `domain/devices.js`.
- */
 export const commandBody = z.discriminatedUnion("action", [
   z.object({ action: z.literal("power"), value: z.union([z.enum(["on", "off"]), z.boolean()]) }),
   z.object({ action: z.literal("mode"), value: z.enum(["auto", "manual"]) }),

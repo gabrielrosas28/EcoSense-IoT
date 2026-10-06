@@ -1,14 +1,3 @@
-/**
- * Contrato MQTT — o mesmo do backend (`backend/src/services/deviceBus.ts`) e
- * do store do frontend (`frontend/src/store/useDevices.js`).
- *
- *   Comando (backend → device):  ecosense/<slug>/cmd     { action, ... }
- *   Status  (device → backend):  ecosense/<slug>/status  { on, mode, online, ...reading }
- *
- * Mexeu aqui? Alinhe com os dois lados — o simulador tem que ser
- * indistinguível do ESP32.
- */
-
 export const DEVICE_SLUGS = ["luz", "projetor", "irrigacao", "umidificador"] as const;
 export type DeviceSlug = (typeof DEVICE_SLUGS)[number];
 
@@ -19,7 +8,6 @@ export const TOPIC = {
 
 export type Mode = "auto" | "manual";
 
-/** Comando como o `api.sendCommand` do frontend envia e o backend repassa. */
 export interface DeviceCommand {
   action: string;
   key?: string;
@@ -27,7 +15,6 @@ export interface DeviceCommand {
   [extra: string]: unknown;
 }
 
-/** Payload de status publicado pelo dispositivo. */
 export interface DeviceStatus {
   on: boolean;
   mode: Mode;

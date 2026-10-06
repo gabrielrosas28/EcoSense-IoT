@@ -28,7 +28,6 @@ export default function Login() {
 
     const ok = await signIn(email.trim(), password);
     if (ok) {
-      // Volta para onde o usuário tentou ir antes de cair no login.
       const from = location.state?.from?.pathname ?? "/";
       navigate(from, { replace: true });
     } else {

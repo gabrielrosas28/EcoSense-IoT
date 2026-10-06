@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { advance, applyCommand, createState, seededRng, tick, toStatus } from "../src/devices.ts";
 
-/** RNG que nunca dispara eventos aleatórios (presença fixa; ruído desprezível). */
 const calmo = () => 0.9999;
 
 describe("estado inicial", () => {
@@ -102,7 +101,7 @@ describe("física", () => {
     tick(s, 1, calmo);
     expect(s.umidificador.on).toBe(true);
 
-    s.umidificador.reading.air = 80.5; // passou do limite, mas dentro da folga
+    s.umidificador.reading.air = 80.5;
     tick(s, 0.01, calmo);
     expect(s.umidificador.on).toBe(true);
 
@@ -156,7 +155,6 @@ describe("advance", () => {
     const s = createState();
     s.umidificador.on = false;
     s.umidificador.reading.air = 70;
-    // 10 minutos num passo só (equivale a SIM_SPEED alto)
     advance(s, 600, calmo);
     expect(s.umidificador.reading.air).toBeGreaterThanOrEqual(78);
     expect(s.umidificador.reading.air).toBeLessThanOrEqual(86);

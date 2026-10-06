@@ -4,10 +4,6 @@ import { useAuth } from "../store/useAuth";
 import { IconGrid, IconLeaf, IconLogout, IconRoutines } from "./Icons";
 import { DEVICE_ICON } from "./deviceIcons";
 
-/**
- * O ponto de status de cada item vem do store — por isso ele muda
- * junto com a tela de detalhe e com o card do Dashboard, sem código extra.
- */
 function StatusDot({ on, online }) {
   const cls = !online ? "status-dot offline" : on ? "status-dot on" : "status-dot";
   const label = !online ? "offline" : on ? "ligado" : "desligado";

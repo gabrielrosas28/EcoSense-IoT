@@ -1,5 +1,3 @@
-/** SVG inline (como no protótipo). Todos herdam `currentColor`. */
-
 const base = {
   fill: "none",
   stroke: "currentColor",

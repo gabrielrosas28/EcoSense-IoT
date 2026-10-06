@@ -1,8 +1,3 @@
-// PostgreSQL embutido (PGlite) para desenvolver sem Docker: npm run db:local
-//
-// É o Postgres de verdade compilado para WebAssembly, rodando dentro do Node e
-// atendendo na porta do DATABASE_URL. Os dados ficam em `.pglite/` (fora do
-// git). Para produção, use um PostgreSQL normal.
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";

@@ -12,7 +12,6 @@ import {
 import { api } from "../services/api";
 import { useDevices } from "../store/useDevices";
 
-/** Períodos do seletor. O intervalo mantém o gráfico entre ~70 e ~170 pontos. */
 const PERIODS = [
   { id: "6h", label: "6 h", hours: 6, interval: "5m" },
   { id: "24h", label: "24 h", hours: 24, interval: "15m" },
@@ -23,21 +22,11 @@ const REFRESH_MS = 60_000;
 
 const keyOf = (s) => `${s.deviceId}_${s.sensor}`;
 
-/**
- * Histórico de umidade (RF08), vindo de `GET /api/devices/:id/readings`.
- *
- * `series`: `[{ deviceId, sensor, label, color, threshold? }]`. Com várias
- * séries, os pontos se alinham porque a API agrega todas na mesma janela. O
- * limite vira uma linha tracejada na cor da série. Sem backend (Fase 1), mostra
- * uma curva de exemplo que termina na leitura atual do store, com aviso na tela.
- */
 export default function HumidityChart({ title, hint, series }) {
   const [periodId, setPeriodId] = useState("24h");
   const [data, setData] = useState({ status: "loading", points: [] });
   const period = PERIODS.find((p) => p.id === periodId);
 
-  // `series` muda de identidade a cada render (o limite vem do store); a busca
-  // só depende de quais sensores são, então a chave é a lista deles.
   const sensorsKey = series.map(keyOf).join(",");
 
   useEffect(() => {
@@ -187,7 +176,6 @@ export default function HumidityChart({ title, hint, series }) {
   );
 }
 
-/** Junta as séries num ponto por instante: `{ at, irrigacao_soil, umidificador_air }`. */
 function mergeSeries(wanted, responses) {
   const byTime = new Map();
   wanted.forEach((s, i) => {
@@ -201,7 +189,6 @@ function mergeSeries(wanted, responses) {
   return [...byTime.values()].sort((a, b) => a.at - b.at);
 }
 
-/** Curva de exemplo determinística, terminando na leitura atual do store. */
 function samplePoints(wanted, period) {
   const devices = useDevices.getState().devices;
   const steps = 48;
@@ -212,7 +199,7 @@ function samplePoints(wanted, period) {
     wanted.forEach((s, j) => {
       const current = Number(devices[s.deviceId]?.reading?.[s.sensor] ?? 50);
       const wave = Math.sin((i + j * 7) / 5) * 6 + Math.sin((i + j * 3) / 2.3) * 2;
-      const fade = (steps - i) / steps; // converge para a leitura atual no fim
+      const fade = (steps - i) / steps;
       row[keyOf(s)] = Math.max(0, Math.min(100, current + wave * fade));
     });
     return row;

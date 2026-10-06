@@ -32,7 +32,7 @@ export async function updateRoutine(id, patch) {
   await ensureValid(next);
 
   const updated = await routines.update(id, next);
-  if (!updated) throw notFound(id); // apagada entre a leitura e a escrita
+  if (!updated) throw notFound(id);
   return updated;
 }
 
@@ -40,7 +40,6 @@ export async function deleteRoutine(id) {
   if (!(await routines.remove(id))) throw notFound(id);
 }
 
-/** Regras entre campos (domain/routines.js) e dispositivo existente. */
 async function ensureValid(routine) {
   const problems = routineProblems(routine);
   if (!(await devices.findById(routine.device))) {

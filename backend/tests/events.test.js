@@ -33,7 +33,7 @@ describe("GET /api/events", () => {
     const [event] = (await get("/api/events?limit=1")).body;
 
     expect(event.text).toBe("teste de fuso");
-    expect(event.at).toBe("07:12"); // 10:12 UTC = 07:12 em São Paulo
+    expect(event.at).toBe("07:12");
   });
 
   it("respeita o limit", async () => {

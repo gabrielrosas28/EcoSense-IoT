@@ -1,8 +1,5 @@
 import { pool } from "../database/pool.js";
 
-// SQL da série temporal dos sensores (tabela `readings`).
-
-/** Grava as amostras de um status de uma vez: `{ soil: 42, presenca: 1 }`. */
 export async function createMany(deviceId, values, db = pool) {
   const sensors = Object.keys(values);
   if (sensors.length === 0) return;
@@ -13,10 +10,6 @@ export async function createMany(deviceId, values, db = pool) {
   );
 }
 
-/**
- * Amostras de `sensors` em `[from, to]`, as `limit` mais recentes de cada
- * sensor, em ordem cronológica (a ordem do gráfico).
- */
 export async function findRaw({ deviceId, sensors, from, to, limit }, db = pool) {
   const { rows } = await db.query(
     `SELECT sensor, recorded_at, value
@@ -31,15 +24,6 @@ export async function findRaw({ deviceId, sensors, from, to, limit }, db = pool)
   return rows.map((row) => ({ sensor: row.sensor, at: row.recorded_at, value: row.value }));
 }
 
-/**
- * Média, mínimo e máximo por janela de `interval` (ex.: '15 minutes'),
- * devolvendo as `limit` janelas mais recentes de cada sensor.
- *
- * A janela de 1 dia vai da meia-noite à meia-noite de `timezone` (o dia
- * letivo, não o dia em UTC). Ela usa `date_trunc` e não `date_bin` com origem
- * local, porque a origem herdaria o horário de verão daquela data. As janelas
- * menores alinham em UTC, que coincide com o relógio local em fuso de hora cheia.
- */
 export async function findBuckets({ deviceId, sensors, from, to, limit, interval, timezone }, db = pool) {
   const { rows } = await db.query(
     `WITH buckets AS (

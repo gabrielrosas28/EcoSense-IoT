@@ -7,11 +7,6 @@ const MESSAGES = {
   body: "Dados inválidos",
 };
 
-/**
- * Valida `params`, `query` e `body` com schemas Zod. O resultado, já convertido
- * e sem campos desconhecidos, fica em `req.validated`: controllers leem de lá,
- * nunca de `req.body` cru.
- */
 export function validate(schemas) {
   return (req, _res, next) => {
     req.validated ??= {};

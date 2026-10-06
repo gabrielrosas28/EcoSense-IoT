@@ -1,22 +1,13 @@
-/**
- * Vocabulário do construtor SE → ENTÃO, igual ao do frontend
- * (store/useRoutines.js: SENSORS, OPERATORS e ACTIONS).
- */
 export const ROUTINE_SENSORS = ["soil", "air", "presenca", "hora"];
 export const ROUTINE_OPERATORS = ["lt", "gt", "eq"];
 export const ROUTINE_ACTIONS = ["on", "off"];
 
-/** Faixa de valores que faz sentido para cada sensor numérico. */
 const RANGES = {
-  soil: [0, 100], // umidade do solo, %
-  air: [0, 100], // umidade do ar, %
-  hora: [0, 23], // hora do dia
+  soil: [0, 100],
+  air: [0, 100],
+  hora: [0, 23],
 };
 
-/**
- * Regras que dependem de mais de um campo. Devolve os problemas no formato de
- * erro da API (`[{ campo, erro }]`), ou lista vazia se a rotina for válida.
- */
 export function routineProblems({ sensor, operator, value }) {
   if (sensor === "presenca") {
     const problems = [];
@@ -36,25 +27,30 @@ export function routineProblems({ sensor, operator, value }) {
   return [];
 }
 
-/** Como cada sensor aparece no histórico ("umidade do solo menor que 30%"). */
 const SENSOR_LABELS = { soil: "umidade do solo", air: "umidade do ar", presenca: "presença", hora: "horário" };
 const OPERATOR_LABELS = { lt: "menor que", gt: "maior que", eq: "igual a" };
 const UNITS = { soil: "%", air: "%", hora: "h" };
 
-/**
- * A condição vale para este valor do sensor? Presença chega como booleano no
- * status e é comparada como 1/0, o mesmo número que a rotina guarda. Sem
- * leitura (`undefined`), a condição não vale.
- */
-export function conditionHolds({ operator, value }, reading) {
+export function conditionHolds({ sensor, operator, value }, reading) {
   if (reading === undefined || reading === null) return false;
   const current = Number(reading);
   if (operator === "lt") return current < value;
   if (operator === "gt") return current > value;
+  if (CONTINUOUS_SENSORS.has(sensor)) return Math.abs(current - value) <= EQ_TOLERANCE;
   return current === value;
 }
 
-/** "umidade do solo menor que 30%", "presença não detectada", "horário igual a 7h". */
+const CONTINUOUS_SENSORS = new Set(["soil", "air"]);
+const EQ_TOLERANCE = 0.5;
+
+export function conditionReached(routine, before, now) {
+  if (conditionHolds(routine, before)) return false;
+  if (conditionHolds(routine, now)) return true;
+  if (routine.operator !== "eq" || !CONTINUOUS_SENSORS.has(routine.sensor)) return false;
+  if (before === undefined || before === null || now === undefined || now === null) return false;
+  return (Number(before) - routine.value) * (Number(now) - routine.value) < 0;
+}
+
 export function describeCondition({ sensor, operator, value }) {
   if (sensor === "presenca") return value === 1 ? "presença detectada" : "presença não detectada";
   return `${SENSOR_LABELS[sensor]} ${OPERATOR_LABELS[operator]} ${value}${UNITS[sensor]}`;

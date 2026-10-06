@@ -1,14 +1,12 @@
 import { DEVICE_CATALOG } from "../domain/devices.js";
 import { hashPassword } from "../lib/password.js";
 
-/** Usuário de desenvolvimento, o mesmo citado no `.env.example` do frontend. */
 export const DEV_USER = {
   name: "Administrador",
   email: "admin@ecosense.local",
   password: "ecosense123",
 };
 
-/** Estado inicial de cada dispositivo, igual ao mock do frontend (store/useDevices.js). */
 const INITIAL_STATE = {
   luz: { on: true, mode: "auto", reading: { presenca: true, sleepMin: 10 } },
   projetor: { on: false, mode: "manual", reading: { fonte: "HDMI 1", autoOff: true, autoOffMin: 15 } },
@@ -16,14 +14,12 @@ const INITIAL_STATE = {
   umidificador: { on: true, mode: "auto", reading: { air: 58, threshold: 80 } },
 };
 
-/** Rotinas de exemplo, iguais às do mock do frontend (store/useRoutines.js). */
 const ROUTINES = [
   { id: "r1", sensor: "soil", operator: "lt", value: 30, action: "on", device: "irrigacao", enabled: true },
   { id: "r2", sensor: "air", operator: "lt", value: 80, action: "on", device: "umidificador", enabled: true },
   { id: "r3", sensor: "presenca", operator: "eq", value: 0, action: "off", device: "luz", enabled: false },
 ];
 
-/** Histórico de exemplo (mock do frontend), com horários relativos a agora. */
 const EVENTS = [
   { device: "irrigacao", message: "Irrigação concluída — 8 s de bomba", minutesAgo: 25 },
   { device: "umidificador", message: "Umidificador ligado — ar em 56%", minutesAgo: 57 },
@@ -31,10 +27,6 @@ const EVENTS = [
   { device: "projetor", message: "Projetor desligado automaticamente", minutesAgo: 10 * 60 },
 ];
 
-/**
- * Popula o banco com o estado inicial do protótipo. Pode rodar quantas vezes
- * quiser: não duplica nada e não sobrescreve o estado atual dos dispositivos.
- */
 export async function seed(db, { log = console.info } = {}) {
   let position = 0;
   for (const [id, device] of Object.entries(DEVICE_CATALOG)) {
@@ -78,12 +70,6 @@ export async function seed(db, { log = console.info } = {}) {
   log(`[db] seed ok: ${Object.keys(DEVICE_CATALOG).length} dispositivos, ${ROUTINES.length} rotinas, usuário ${DEV_USER.email}`);
 }
 
-/**
- * 24 h de leituras de exemplo, uma a cada 15 min, para os gráficos não
- * nascerem vazios: solo secando devagar, ar oscilando e presença no horário
- * de aula (7h às 18h no fuso da escola). Só roda com a tabela vazia; depois
- * quem alimenta a série é o status MQTT.
- */
 async function seedReadings(db) {
   const { rows } = await db.query("SELECT EXISTS (SELECT 1 FROM readings) AS has_readings");
   if (rows[0].has_readings) return;

@@ -1,4 +1,3 @@
-/** Uma linha por requisição: método, caminho, status e duração. */
 export function requestLogger(req, res, next) {
   const start = process.hrtime.bigint();
   res.on("finish", () => {

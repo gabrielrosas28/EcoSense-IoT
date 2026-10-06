@@ -7,12 +7,6 @@ import { createApp } from "../src/app.js";
 import { createMqttBridge, STATUS_TOPIC } from "../src/mqtt/bridge.js";
 import { authHeader } from "./support/auth.js";
 
-/**
- * A ponte MQTT de ponta a ponta contra um broker em memória (aedes), sem
- * Docker. Um cliente MQTT faz o papel do dispositivo, como o simulador/ESP32:
- * assina `ecosense/+/cmd` e publica em `ecosense/<id>/status`.
- */
-
 const app = createApp();
 const auth = authHeader();
 const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -30,7 +24,6 @@ const events = async () => (await request(app).get("/api/events?limit=100").set(
 const status = (id, payload, opts = {}) =>
   dispositivo.publishAsync(`ecosense/${id}/status`, JSON.stringify(payload), { qos: 1, ...opts });
 
-/** Sobe uma ponte nova e espera ela assinar os status (não só conectar). */
 async function startBridge() {
   const assinou = new Promise((resolve) => {
     broker.on("subscribe", function aguardar(subscriptions) {
@@ -98,8 +91,6 @@ describe("ponte MQTT", () => {
       .expect(202);
     await vi.waitFor(() => expect(comandos.some((c) => c.topic === "ecosense/luz/cmd")).toBe(true), ESPERA);
 
-    // Quem já está inscrito sempre recebe com retain=0 (regra do MQTT); só um
-    // cliente novo mostra se o broker guardou a mensagem.
     const recemChegado = await mqtt.connectAsync(url, { clientId: "teste-esp32-reconectando" });
     const recebidos = [];
     recemChegado.on("message", (topic) => recebidos.push(topic));
@@ -121,7 +112,6 @@ describe("ponte MQTT", () => {
   it("roda as rotinas sobre o status: solo seco → publica o comando de ligar a irrigação", async () => {
     comandos.length = 0;
 
-    // Rotina r1 do seed: SE solo < 30 ENTÃO ligar irrigação.
     await status("irrigacao", { on: false, mode: "auto", online: true, soil: 22, threshold: 30, maxPumpSec: 10 });
 
     await vi.waitFor(() => {
@@ -131,7 +121,6 @@ describe("ponte MQTT", () => {
   });
 
   it("fecha o ciclo: comando → dispositivo obedece → status confirma, sem evento duplicado", async () => {
-    // Dispositivo de mentira: obedece ao power e confirma publicando o status.
     const obedecer = (topic, raw) => {
       const comando = JSON.parse(raw.toString());
       if (topic === "ecosense/umidificador/cmd" && comando.action === "power") {
@@ -166,7 +155,7 @@ describe("ponte MQTT", () => {
       will: { topic: "ecosense/luz/status", payload: JSON.stringify({ online: false }), qos: 1, retain: true },
     });
 
-    esp32.end(true); // cai sem DISCONNECT, como um ESP32 sem energia
+    esp32.end(true);
 
     await vi.waitFor(async () => {
       expect((await device("luz")).online).toBe(false);
@@ -188,9 +177,31 @@ describe("ponte MQTT", () => {
     expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("dispositivo desconhecido ignorado: geladeira"));
   });
 
+  it("ao parar, ainda publica o comando de uma rotina disparada por status da fila", async () => {
+    comandos.length = 0;
+    await status("irrigacao", { on: false, mode: "auto", online: true, soil: 50, threshold: 30, maxPumpSec: 10 });
+    await vi.waitFor(async () => expect((await device("irrigacao")).reading.soil).toBe(50), ESPERA);
+
+    const recebido = new Promise((resolve) => {
+      broker.on("ack", function aguardar(_packet, client) {
+        if (client?.id.startsWith("ecosense-api-")) {
+          broker.off("ack", aguardar);
+          resolve();
+        }
+      });
+    });
+    await status("irrigacao", { on: false, mode: "auto", online: true, soil: 20, threshold: 30, maxPumpSec: 10 });
+    await recebido;
+    await bridge.stop();
+
+    await vi.waitFor(() => {
+      expect(comandos).toEqual([{ topic: "ecosense/irrigacao/cmd", payload: { action: "power", value: "on" }, qos: 1 }]);
+    }, ESPERA);
+    bridge = await startBridge();
+  });
+
   it("ao conectar, recebe o último status retido de cada dispositivo", async () => {
     await bridge.stop();
-    // Publicado com a API desligada: só chega porque o broker guarda (retain).
     await status("projetor", { on: false, mode: "manual", online: true, fonte: "VGA", autoOff: false, autoOffMin: 15 }, { retain: true });
 
     bridge = await startBridge();

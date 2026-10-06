@@ -12,10 +12,6 @@ const fields = {
   enabled: z.boolean(),
 };
 
-/**
- * Mesmo formato do store do frontend (store/useRoutines.js). O `id` é opcional:
- * o frontend manda o que gerou na tela; sem ele, a API gera um UUID.
- */
 export const createRoutineBody = z.object({
   id: z
     .string()
