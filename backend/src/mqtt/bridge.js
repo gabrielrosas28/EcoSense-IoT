@@ -24,6 +24,7 @@ export function createMqttBridge({ url, username, password, log = console }) {
   // Status são gravados um por vez, na ordem em que chegam: dois heartbeats
   // seguidos do mesmo dispositivo não podem ser aplicados fora de ordem.
   let queue = Promise.resolve();
+  let stopping = false;
 
   function onCommand({ deviceId, topic, command }) {
     if (!client.connected) {
@@ -37,7 +38,7 @@ export function createMqttBridge({ url, username, password, log = console }) {
 
   function onMessage(topic, raw) {
     const [, deviceId] = STATUS_TOPIC_PATTERN.exec(topic) ?? [];
-    if (!deviceId) return;
+    if (!deviceId || stopping) return;
     queue = queue
       .then(() => handleStatus(deviceId, raw.toString()))
       .catch((err) => log.error(`[mqtt] erro ao gravar status de ${deviceId}:`, err));
@@ -70,6 +71,7 @@ export function createMqttBridge({ url, username, password, log = console }) {
 
   return {
     start() {
+      stopping = false;
       client = mqtt.connect(url, {
         clientId: `ecosense-api-${randomBytes(3).toString("hex")}`,
         username,
@@ -100,11 +102,16 @@ export function createMqttBridge({ url, username, password, log = console }) {
       deviceBus.on("command", onCommand);
     },
 
-    /** Para de receber, espera os status em andamento e fecha a conexão. */
+    /**
+     * Para de receber, espera os status em andamento e só então fecha a
+     * conexão: uma rotina disparada por um status da fila ainda precisa
+     * publicar o comando, que já foi gravado no banco.
+     */
     async stop() {
+      stopping = true;
+      await queue;
       deviceBus.off("command", onCommand);
       await client?.endAsync();
-      await queue;
     },
 
     /** "up" quando conectado ao broker; "down" enquanto tenta reconectar. */

@@ -1,6 +1,6 @@
 import { config } from "../config/env.js";
 import { DEVICE_CATALOG } from "../domain/devices.js";
-import { conditionHolds, describeCondition } from "../domain/routines.js";
+import { conditionReached, describeCondition } from "../domain/routines.js";
 import * as routines from "../repositories/routine.repository.js";
 import * as deviceService from "./device.service.js";
 
@@ -55,14 +55,23 @@ async function runAll(candidates, valuesOf) {
   // Uma de cada vez: duas rotinas no mesmo dispositivo leem o estado já atualizado.
   for (const routine of candidates) {
     const [before, now] = valuesOf(routine);
-    if (conditionHolds(routine, before) || !conditionHolds(routine, now)) continue;
-    results.push(await run(routine));
+    if (!conditionReached(routine, before, now)) continue;
+    // Uma rotina com erro (banco fora, falha ao entregar) não impede as seguintes.
+    try {
+      results.push(await run(routine));
+    } catch (error) {
+      results.push({ routine: routine.id, fired: false, reason: `erro: ${error.message}`, error });
+    }
   }
   return results;
 }
 
 async function run(routine) {
-  const target = await deviceService.getDevice(routine.device).catch(() => null);
+  // Só o 404 vira "não existe"; erro de banco sobe e aparece como erro no log.
+  const target = await deviceService.getDevice(routine.device).catch((err) => {
+    if (err.status === 404) return null;
+    throw err;
+  });
   const on = routine.action === "on";
 
   let skipped = null;
@@ -128,7 +137,8 @@ export function createAutomationClock({ intervalMs = 60_000, now = () => new Dat
 /** Registra no log o que cada rotina fez; não dispara nada. */
 export function logResults(log, results) {
   for (const result of results) {
-    if (result.fired) log.info(`[automação] rotina ${result.routine} disparou`);
+    if (result.error) log.error(`[automação] rotina ${result.routine} falhou:`, result.error);
+    else if (result.fired) log.info(`[automação] rotina ${result.routine} disparou`);
     else log.info(`[automação] rotina ${result.routine} não agiu: ${result.reason}`);
   }
 }
