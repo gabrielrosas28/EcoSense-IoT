@@ -76,6 +76,15 @@ export const api = {
     return request("/devices").catch(() => null);
   },
 
+  /**
+   * Histórico dos sensores: `{ device, from, to, interval, series: { soil: [{ at, value }] } }`.
+   * `params`: `sensor`, `from`/`to` (ISO), `interval` (1m, 5m, 15m, 1h, 1d), `limit`.
+   */
+  getReadings(id, params = {}) {
+    const query = new URLSearchParams(params).toString();
+    return request(`/devices/${id}/readings${query ? `?${query}` : ""}`).catch(() => null);
+  },
+
   getRoutines() {
     return request("/routines").catch(() => null);
   },

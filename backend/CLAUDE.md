@@ -48,7 +48,8 @@ rota → validate (Zod) → controller → service → repository → PostgreSQL
 - Evento no histórico só para mudança real (liga/desliga, online/offline).
   Heartbeat e confirmação de comando não viram evento.
 - Sensor novo: adicione em `sensors` no catálogo (`src/domain/devices.js`).
-  Chave fora do catálogo é ignorada no status.
+  Chave fora do catálogo é ignorada no status. Só `sensors` entram na série
+  `readings` (booleano como 0/1); `settings` nunca, porque não são medição.
 - A API não pode depender do broker para subir: sem conexão ela segue
   funcionando e o mqtt.js reconecta sozinho.
 

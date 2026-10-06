@@ -21,6 +21,7 @@ describe("seed", () => {
     expect(await count("devices")).toBe(4);
     expect(await count("routines")).toBe(3);
     expect(await count("events")).toBe(4);
+    expect(await count("readings")).toBe(3 * 96); // 3 sensores, 24 h a cada 15 min
     expect(await count("users")).toBe(1);
     expect((await pool.query("SELECT is_on FROM devices WHERE id = 'luz'")).rows[0].is_on).toBe(false);
   });

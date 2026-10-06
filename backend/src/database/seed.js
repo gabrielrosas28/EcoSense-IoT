@@ -67,6 +67,8 @@ export async function seed(db, { log = console.info } = {}) {
     }
   }
 
+  await seedReadings(db);
+
   await db.query(
     `INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3)
      ON CONFLICT ((lower(email))) DO NOTHING`,
@@ -74,4 +76,28 @@ export async function seed(db, { log = console.info } = {}) {
   );
 
   log(`[db] seed ok: ${Object.keys(DEVICE_CATALOG).length} dispositivos, ${ROUTINES.length} rotinas, usuário ${DEV_USER.email}`);
+}
+
+/**
+ * 24 h de leituras de exemplo, uma a cada 15 min, para os gráficos não
+ * nascerem vazios: solo secando devagar, ar oscilando e presença no horário
+ * de aula (7h às 18h no fuso da escola). Só roda com a tabela vazia; depois
+ * quem alimenta a série é o status MQTT.
+ */
+async function seedReadings(db) {
+  const { rows } = await db.query("SELECT EXISTS (SELECT 1 FROM readings) AS has_readings");
+  if (rows[0].has_readings) return;
+
+  await db.query(
+    `INSERT INTO readings (device_id, sensor, value, recorded_at)
+     SELECT s.device_id, s.sensor,
+            CASE s.sensor
+              WHEN 'soil' THEN round((45 + 10 * sin(extract(epoch FROM t) / 9000))::numeric, 1)
+              WHEN 'air'  THEN round((58 + 6 * cos(extract(epoch FROM t) / 5400))::numeric, 1)
+              ELSE CASE WHEN extract(hour FROM t AT TIME ZONE 'America/Sao_Paulo') BETWEEN 7 AND 17 THEN 1 ELSE 0 END
+            END,
+            t
+       FROM generate_series(now() - interval '23 hours 45 minutes', now(), interval '15 minutes') AS t
+      CROSS JOIN (VALUES ('irrigacao', 'soil'), ('umidificador', 'air'), ('luz', 'presenca')) AS s (device_id, sensor)`,
+  );
 }
