@@ -76,6 +76,7 @@ frontend/src/
 │   └── EventList.jsx
 └── pages/
     ├── Login.jsx
+    ├── Cadastro.jsx        # criar conta (nome, e-mail, senha)
     ├── Dashboard.jsx
     ├── Luz.jsx
     ├── Projetor.jsx
@@ -124,7 +125,8 @@ Não guarde `on`/`mode` em `useState` local das páginas — leia sempre do stor
 
 | Rota | Página | Conteúdo |
 |---|---|---|
-| `/login` | Login | Marca EcoSense, e-mail/senha, "Entrar" → `/` |
+| `/login` | Login | Marca EcoSense, e-mail/senha, "Entrar" → `/`, link "Criar conta" |
+| `/cadastro` | Cadastro | Nome, e-mail, senha e confirmação; "Criar conta" já entra logado → `/` |
 | `/` | Dashboard | StatusPill do sistema, 4 DeviceCard, EnergyChart (economia), EventList |
 | `/luz` | Iluminação | PowerButton, presença, ModeToggle, ThresholdSlider "desligar após X min", histórico |
 | `/projetor` | Projetor | PowerButton, **controle remoto** (fonte HDMI 1/2/VGA, d-pad + OK, Menu/Voltar/Vol), card de desligamento automático (Switch + "após X min sem presença") |
@@ -141,6 +143,7 @@ Não guarde `on`/`mode` em `useState` local das páginas — leia sempre do stor
 5. **Rotinas:** o construtor cria a regra no formato "Se \<sensor\> \<operador\> \<valor\> → \<ação\> \<dispositivo\>" e adiciona à lista; cada rotina tem toggle ativar/desativar. (No mock, persiste em memória; com backend, via `api`.)
 6. **Tempo real:** o `EnergyChart` e o `EventList` refletem dados do backend; enquanto não houver, usam os dados de exemplo do protótipo.
 7. **Login/Sair:** "Entrar" abre o app; "Sair" volta ao login.
+8. **Cadastro:** "Criar conta" cadastra (a senha só vira hash no backend) e abre o app; e-mail repetido mostra o aviso na própria tela.
 
 ## Integração com o backend
 

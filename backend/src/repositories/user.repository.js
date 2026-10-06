@@ -16,6 +16,18 @@ export async function findById(id, db = pool) {
   return rows[0] ? toUser(rows[0]) : null;
 }
 
+/**
+ * Grava um usuário novo. Recebe o hash, nunca a senha. E-mail repetido viola o
+ * índice único `users_email_key` e o erro sobe com o código 23505 do PostgreSQL.
+ */
+export async function create({ name, email, passwordHash }, db = pool) {
+  const { rows } = await db.query(
+    `INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING ${COLUMNS}`,
+    [name, email, passwordHash],
+  );
+  return toUser(rows[0]);
+}
+
 function toUser(row) {
   return { id: row.id, name: row.name, email: row.email, passwordHash: row.password_hash };
 }

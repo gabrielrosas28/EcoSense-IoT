@@ -1,19 +1,11 @@
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../store/useAuth";
 import { IconLeaf } from "../components/Icons";
+import { onlyErrors, validateEmail, validatePassword } from "../services/validation";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MIN_SENHA = 6; // mesmo mínimo do backend (routes/schemas.ts)
-
-/** Validação local — evita ida ao servidor com dado que ele recusaria. */
 function validate(email, password) {
-  const errors = {};
-  if (!email.trim()) errors.email = "Informe o e-mail.";
-  else if (!EMAIL_RE.test(email.trim())) errors.email = "E-mail inválido.";
-  if (!password) errors.password = "Informe a senha.";
-  else if (password.length < MIN_SENHA) errors.password = `A senha tem ao menos ${MIN_SENHA} caracteres.`;
-  return errors;
+  return onlyErrors({ email: validateEmail(email), password: validatePassword(password) });
 }
 
 export default function Login() {
@@ -117,6 +109,13 @@ export default function Login() {
             {busy ? "Entrando…" : "Entrar"}
           </button>
         </form>
+
+        <p className="login-switch">
+          Ainda não tem conta?{" "}
+          <Link to="/cadastro" state={location.state} onClick={clearError}>
+            Criar conta
+          </Link>
+        </p>
 
         <p className="login-foot">Fase 1 — ambiente de demonstração</p>
       </div>

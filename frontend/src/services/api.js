@@ -115,6 +115,14 @@ export const api = {
     });
   },
 
+  /** Cadastro: `{ token, user }`, já logado. 409 se o e-mail já existe, 400 validação. */
+  register(name, email, password) {
+    return request("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ name, email, password }),
+    });
+  },
+
   /** Usuário do token atual. */
   me() {
     return request("/auth/me");
