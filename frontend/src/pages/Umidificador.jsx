@@ -1,6 +1,7 @@
 import { deviceActions, useDevice } from "../store/useDevices";
 import EventList from "../components/EventList";
 import Gauge from "../components/Gauge";
+import HumidityChart from "../components/HumidityChart";
 import ModeToggle from "../components/ModeToggle";
 import PageHeader from "../components/PageHeader";
 import PowerButton from "../components/PowerButton";
@@ -50,6 +51,12 @@ export default function Umidificador() {
                 onToggle={() => deviceActions.toggleOn("umidificador")}
               />
             </div>
+
+            {device.mode === "auto" && (
+              <p className="override-hint">
+                No automático, ligar ou desligar por aqui passa o umidificador para o modo manual.
+              </p>
+            )}
           </section>
 
           <section className="card">
@@ -66,6 +73,12 @@ export default function Umidificador() {
             />
           </section>
         </div>
+
+        <HumidityChart
+          title="Histórico da umidade do ar"
+          hint="Média por janela; a linha tracejada é o limite do umidificador."
+          series={[{ deviceId: "umidificador", sensor: "air", label: "Ar", color: device.accent, threshold }]}
+        />
 
         <EventList deviceId="umidificador" title="Histórico do umidificador" />
       </div>
