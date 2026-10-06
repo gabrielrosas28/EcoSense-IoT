@@ -1,6 +1,7 @@
 import { deviceActions, useDevice } from "../store/useDevices";
 import EventList from "../components/EventList";
 import Gauge from "../components/Gauge";
+import HumidityChart from "../components/HumidityChart";
 import ModeToggle from "../components/ModeToggle";
 import PageHeader from "../components/PageHeader";
 import PowerButton from "../components/PowerButton";
@@ -51,6 +52,12 @@ export default function Irrigacao() {
                 onToggle={() => deviceActions.toggleOn("irrigacao")}
               />
             </div>
+
+            {device.mode === "auto" && (
+              <p className="override-hint">
+                No automático, ligar ou desligar por aqui passa a irrigação para o modo manual.
+              </p>
+            )}
           </section>
 
           <section className="card stack">
@@ -78,6 +85,12 @@ export default function Irrigacao() {
             />
           </section>
         </div>
+
+        <HumidityChart
+          title="Histórico da umidade do solo"
+          hint="Média por janela; a linha tracejada é o limite de irrigação."
+          series={[{ deviceId: "irrigacao", sensor: "soil", label: "Solo", color: device.accent, threshold }]}
+        />
 
         <EventList deviceId="irrigacao" title="Histórico da irrigação" />
       </div>

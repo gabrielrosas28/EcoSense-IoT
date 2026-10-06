@@ -68,6 +68,14 @@ const THRESHOLD_KEY = {
   umidificador: "threshold",
 };
 
+/**
+ * Dispositivos que o modo automático liga e desliga sozinho. Neles, acionar o
+ * botão é um override: passa para o manual, senão a automação desfaz no ciclo
+ * seguinte (ex.: desligar o umidificador com o ar abaixo do limite). O
+ * desligamento automático do projetor é um recurso à parte e vale nos dois modos.
+ */
+export const AUTO_CONTROLLED = new Set(["luz", "irrigacao", "umidificador"]);
+
 let eventSeq = 0;
 const nextEventId = () => `ev-${Date.now()}-${eventSeq++}`;
 
@@ -106,12 +114,25 @@ export const useDevices = create((set, get) => ({
 
   // ---------- actions (as únicas que mudam estado) ----------
 
+  /** Liga/desliga pelo painel. Em automático, é override: passa antes para o manual. */
   setOn(id, value) {
     const device = get().devices[id];
     if (!device) return;
+    const power = { action: "power", value: value ? "on" : "off" };
+
+    if (device.mode === "auto" && AUTO_CONTROLLED.has(id)) {
+      get().patchDevice(id, { mode: "manual", on: value });
+      get().pushEvent(id, `${device.name} em modo manual (acionamento pelo painel)`);
+      get().pushEvent(id, `${device.name} ${value ? "ligado" : "desligado"} pelo painel`);
+      get().notify(`${device.name} passou para o modo manual`);
+      // Em sequência: se o power chegasse antes, a automação poderia desfazê-lo.
+      api.sendCommand(id, { action: "mode", value: "manual" }).then(() => api.sendCommand(id, power));
+      return;
+    }
+
     get().patchDevice(id, { on: value });
     get().pushEvent(id, `${device.name} ${value ? "ligado" : "desligado"} pelo painel`);
-    api.sendCommand(id, { action: "power", value: value ? "on" : "off" });
+    api.sendCommand(id, power);
   },
 
   toggleOn(id) {
