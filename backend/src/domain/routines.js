@@ -46,12 +46,32 @@ const UNITS = { soil: "%", air: "%", hora: "h" };
  * status e é comparada como 1/0, o mesmo número que a rotina guarda. Sem
  * leitura (`undefined`), a condição não vale.
  */
-export function conditionHolds({ operator, value }, reading) {
+export function conditionHolds({ sensor, operator, value }, reading) {
   if (reading === undefined || reading === null) return false;
   const current = Number(reading);
   if (operator === "lt") return current < value;
   if (operator === "gt") return current > value;
+  // Umidade chega com casas decimais (30,04; 29,97): "igual a 30" vale na faixa
+  // de meio ponto em volta, senão a rotina quase nunca dispararia.
+  if (CONTINUOUS_SENSORS.has(sensor)) return Math.abs(current - value) <= EQ_TOLERANCE;
   return current === value;
+}
+
+/** Sensores de leitura contínua, em que "igual a" é uma faixa e não um valor exato. */
+const CONTINUOUS_SENSORS = new Set(["soil", "air"]);
+const EQ_TOLERANCE = 0.5;
+
+/**
+ * A condição passou a valer entre a leitura de antes e a de agora (a BORDA que
+ * dispara a rotina)? Em "igual a" de umidade, a leitura pode pular a faixa de
+ * um status para o outro (30,6 → 29,4): ter passado pelo valor também conta.
+ */
+export function conditionReached(routine, before, now) {
+  if (conditionHolds(routine, before)) return false;
+  if (conditionHolds(routine, now)) return true;
+  if (routine.operator !== "eq" || !CONTINUOUS_SENSORS.has(routine.sensor)) return false;
+  if (before === undefined || before === null || now === undefined || now === null) return false;
+  return (Number(before) - routine.value) * (Number(now) - routine.value) < 0;
 }
 
 /** "umidade do solo menor que 30%", "presença não detectada", "horário igual a 7h". */

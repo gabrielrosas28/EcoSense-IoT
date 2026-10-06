@@ -139,6 +139,42 @@ describe("rotinas sobre o status do dispositivo", () => {
     expect((await device("projetor")).on).toBe(false);
   });
 
+  it("uma rotina com erro não impede as outras do mesmo status", async () => {
+    await api().post("/api/routines", { id: "r-luz", sensor: "soil", operator: "lt", value: 30, action: "off", device: "luz" });
+    // Falha ao entregar o comando da irrigação (r1 roda primeiro).
+    const falhar = ({ deviceId }) => {
+      if (deviceId === "irrigacao") throw new Error("barramento fora do ar");
+    };
+    deviceBus.prependListener("command", falhar);
+    try {
+      const results = await status("irrigacao", { soil: 25 });
+
+      expect(results).toEqual([
+        expect.objectContaining({ routine: "r1", fired: false, reason: "erro: barramento fora do ar" }),
+        { routine: "r-luz", fired: true },
+      ]);
+      expect((await device("luz")).on).toBe(false);
+    } finally {
+      deviceBus.off("command", falhar);
+    }
+  });
+
+  it("'igual a' em umidade vale com leitura decimal perto do valor", async () => {
+    await api().post("/api/routines", { id: "r-eq", sensor: "soil", operator: "eq", value: 40, action: "off", device: "luz" });
+
+    expect(await status("irrigacao", { soil: 40.3 })).toEqual([{ routine: "r-eq", fired: true }]);
+    expect((await device("luz")).on).toBe(false);
+    // Continua na faixa: não dispara de novo.
+    expect(await status("irrigacao", { soil: 39.8 })).toEqual([]);
+  });
+
+  it("'igual a' em umidade dispara quando a leitura pula por cima do valor", async () => {
+    await api().post("/api/routines", { id: "r-eq", sensor: "air", operator: "eq", value: 60, action: "off", device: "luz" });
+
+    // Ar do seed em 58: sobe direto para 61, sem nenhum status entre 59,5 e 60,5.
+    expect(await status("umidificador", { air: 61 })).toEqual([{ routine: "r-eq", fired: true }]);
+  });
+
   it("status de dispositivo sem sensor não avalia nada", async () => {
     expect(await status("projetor", { on: true })).toEqual([]);
   });

@@ -188,6 +188,31 @@ describe("ponte MQTT", () => {
     expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("dispositivo desconhecido ignorado: geladeira"));
   });
 
+  it("ao parar, ainda publica o comando de uma rotina disparada por status da fila", async () => {
+    comandos.length = 0;
+    await status("irrigacao", { on: false, mode: "auto", online: true, soil: 50, threshold: 30, maxPumpSec: 10 });
+    await vi.waitFor(async () => expect((await device("irrigacao")).reading.soil).toBe(50), ESPERA);
+
+    // Espera a ponte receber (e enfileirar) o status de solo seco e para logo em seguida.
+    const recebido = new Promise((resolve) => {
+      broker.on("ack", function aguardar(_packet, client) {
+        // O aedes não manda o pacote no "ack": o único que a ponte confirma aqui é este status.
+        if (client?.id.startsWith("ecosense-api-")) {
+          broker.off("ack", aguardar);
+          resolve();
+        }
+      });
+    });
+    await status("irrigacao", { on: false, mode: "auto", online: true, soil: 20, threshold: 30, maxPumpSec: 10 });
+    await recebido;
+    await bridge.stop();
+
+    await vi.waitFor(() => {
+      expect(comandos).toEqual([{ topic: "ecosense/irrigacao/cmd", payload: { action: "power", value: "on" }, qos: 1 }]);
+    }, ESPERA);
+    bridge = await startBridge();
+  });
+
   it("ao conectar, recebe o último status retido de cada dispositivo", async () => {
     await bridge.stop();
     // Publicado com a API desligada: só chega porque o broker guarda (retain).
