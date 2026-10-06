@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/app.js";
+import { pool } from "../src/database/pool.js";
 import { DEV_USER } from "../src/database/seed.js";
 import { authHeader } from "./support/auth.js";
 
@@ -70,6 +71,83 @@ describe("POST /api/auth/login", () => {
       { campo: "email", erro: "Informe um e-mail válido" },
       { campo: "password", erro: "Informe a senha" },
     ]);
+  });
+});
+
+describe("POST /api/auth/register", () => {
+  const register = (body) => request(app).post("/api/auth/register").send(body);
+  const NOVO = { name: "Maria Souza", email: "maria@ecosense.local", password: "senha-forte" };
+
+  it("cadastra e já devolve a sessão, como o login", async () => {
+    const res = await register(NOVO);
+
+    expect(res.status).toBe(201);
+    expect(res.body.token).toEqual(expect.any(String));
+    expect(res.body.user).toEqual({
+      id: expect.stringMatching(/^[0-9a-f-]{36}$/),
+      name: "Maria Souza",
+      email: "maria@ecosense.local",
+    });
+
+    const me = await request(app).get("/api/auth/me").set("Authorization", `Bearer ${res.body.token}`);
+    expect(me.body).toEqual(res.body.user);
+  });
+
+  it("guarda só o hash da senha no banco (RNF03)", async () => {
+    await register(NOVO);
+
+    const { rows } = await pool.query("SELECT password_hash FROM users WHERE email = $1", [NOVO.email]);
+    expect(rows[0].password_hash).toMatch(/^scrypt\$[^$]+\$[^$]+$/);
+    expect(rows[0].password_hash).not.toContain(NOVO.password);
+  });
+
+  it("nunca devolve a senha nem o hash", async () => {
+    const res = await register(NOVO);
+
+    expect(JSON.stringify(res.body)).not.toMatch(/scrypt|password|senha-forte/);
+  });
+
+  it("permite entrar com a senha cadastrada", async () => {
+    await register(NOVO);
+
+    const ok = await login({ email: NOVO.email, password: NOVO.password });
+    const errada = await login({ email: NOVO.email, password: "outra-senha" });
+
+    expect(ok.status).toBe(200);
+    expect(errada.status).toBe(401);
+  });
+
+  it("recusa e-mail já cadastrado, sem diferenciar maiúsculas", async () => {
+    const res = await register({ ...NOVO, email: "ADMIN@ecosense.local" });
+
+    expect(res.status).toBe(409);
+    expect(res.body).toEqual({ error: "Este e-mail já está cadastrado" });
+  });
+
+  it("aceita só um de dois cadastros simultâneos com o mesmo e-mail", async () => {
+    const respostas = await Promise.all([register(NOVO), register(NOVO)]);
+
+    expect(respostas.map((r) => r.status).sort()).toEqual([201, 409]);
+  });
+
+  it("valida o corpo no formato que a tela lê (details[0].erro)", async () => {
+    const res = await register({ name: " ", email: "nao-e-email", password: "123" });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({
+      error: "Dados inválidos",
+      details: [
+        { campo: "name", erro: "O nome tem pelo menos 2 caracteres" },
+        { campo: "email", erro: "Informe um e-mail válido" },
+        { campo: "password", erro: "A senha tem pelo menos 6 caracteres" },
+      ],
+    });
+  });
+
+  it("tira os espaços das pontas do nome", async () => {
+    const res = await register({ ...NOVO, name: "  Maria Souza  " });
+
+    expect(res.body.user.name).toBe("Maria Souza");
   });
 });
 

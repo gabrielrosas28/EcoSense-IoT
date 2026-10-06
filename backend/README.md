@@ -58,6 +58,9 @@ encaminha `/api` para `localhost:3000`.
 ```bash
 curl http://localhost:3000/api/health
 
+# cadastro → token (já entra logado)
+curl -X POST http://localhost:3000/api/auth/register   -H "Content-Type: application/json"   -d '{"name":"Maria","email":"maria@ecosense.local","password":"senha-forte"}'
+
 # login → token
 curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
@@ -107,6 +110,7 @@ Todas sob `/api`. Erros sempre no formato `{ "error": "...", "details": [{ "camp
 | Método | Rota | Login | O que faz |
 |---|---|---|---|
 | `GET` | `/api/health` | — | Situação da API, do banco e do broker (503 se o banco cair) |
+| `POST` | `/api/auth/register` | — | `{ name, email, password }` → `{ token, user }` (201; 409 se o e-mail já existe) |
 | `POST` | `/api/auth/login` | — | `{ email, password }` → `{ token, user }` |
 | `GET` | `/api/auth/me` | ✔ | Usuário da sessão |
 | `GET` | `/api/devices` | ✔ | Os 4 dispositivos, na ordem das telas |
@@ -117,6 +121,10 @@ Todas sob `/api`. Erros sempre no formato `{ "error": "...", "details": [{ "camp
 | `PATCH` | `/api/routines/:id` | ✔ | Altera, por exemplo o interruptor `{ "enabled": false }` |
 | `DELETE` | `/api/routines/:id` | ✔ | Remove (204) |
 | `GET` | `/api/events` | ✔ | Histórico do dashboard (`?limit=20&device=luz`) |
+
+A senha nunca é gravada nem devolvida: o cadastro guarda só o hash scrypt com
+salt aleatório (`src/lib/password.js`, formato `scrypt$<salt>$<hash>`), e o
+login compara em tempo constante (RNF03).
 
 Rota protegida sem token, ou com token vencido, responde **401**. O login do
 frontend (branch `feat/setup-do-frontend`) trata esse 401 voltando para a tela

@@ -4,6 +4,8 @@ import { hashPassword, verifyPassword } from "../lib/password.js";
 import { signToken } from "../lib/token.js";
 import * as users from "../repositories/user.repository.js";
 
+const UNIQUE_VIOLATION = "23505";
+
 // Quando o e-mail não existe, a senha é comparada mesmo assim contra este hash:
 // o tempo de resposta não revela quais e-mails estão cadastrados.
 let dummyHash;
@@ -16,6 +18,22 @@ export async function login(email, password) {
   if (!user || !valid) throw HttpError.unauthorized("E-mail ou senha inválidos");
 
   return { token: signToken(user), user: toPublicUser(user) };
+}
+
+/**
+ * Cadastra e já devolve a sessão, como no login. A senha vira hash aqui e só o
+ * hash vai para o banco (RNF03).
+ */
+export async function register({ name, email, password }) {
+  const passwordHash = await hashPassword(password);
+  try {
+    const user = await users.create({ name, email, passwordHash });
+    return { token: signToken(user), user: toPublicUser(user) };
+  } catch (err) {
+    // Também cobre dois cadastros simultâneos com o mesmo e-mail: quem decide é o índice único.
+    if (err.code === UNIQUE_VIOLATION) throw HttpError.conflict("Este e-mail já está cadastrado");
+    throw err;
+  }
 }
 
 export async function getProfile(userId) {

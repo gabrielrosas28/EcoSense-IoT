@@ -6,6 +6,7 @@ import Sidebar from "./components/Sidebar";
 import Toasts from "./components/Toasts";
 import Dashboard from "./pages/Dashboard";
 import Irrigacao from "./pages/Irrigacao";
+import Cadastro from "./pages/Cadastro";
 import Login from "./pages/Login";
 import Luz from "./pages/Luz";
 import Projetor from "./pages/Projetor";
@@ -36,17 +37,19 @@ function AppLayout() {
   );
 }
 
-function LoginRoute() {
+/** Telas abertas (login e cadastro): quem já tem sessão vai direto para o app. */
+function PublicRoute({ children }) {
   const user = useAuth((s) => s.user);
   const location = useLocation();
-  if (!user) return <Login />;
+  if (!user) return children;
   return <Navigate to={location.state?.from?.pathname ?? "/"} replace />;
 }
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginRoute />} />
+      <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+      <Route path="/cadastro" element={<PublicRoute><Cadastro /></PublicRoute>} />
       <Route element={<AppLayout />}>
         <Route index element={<Dashboard />} />
         <Route path="luz" element={<Luz />} />
