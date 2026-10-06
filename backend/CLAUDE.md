@@ -42,7 +42,10 @@ rota → validate (Zod) → controller → service → repository → PostgreSQL
 - Comando: QoS 1 e **nunca** `retain`, porque um dispositivo que reconecta não
   pode repetir ordem velha. Só a ponte (`src/mqtt/bridge.js`) publica; os
   services usam `publishCommand` do `deviceBus`.
-- Status nunca gera comando de volta (laço backend ↔ dispositivo).
+- Status não gera comando de volta (laço backend ↔ dispositivo). A única
+  exceção é a rotina do usuário (`automation.service.js`), e ela só dispara na
+  borda da condição, nunca em modo manual nem se o alvo já está no estado pedido.
+  Não afrouxe essas três travas.
 - A ponte grava os status em fila, um por vez, na ordem de chegada. Não
   paralelize: heartbeat fora de ordem grava estado velho.
 - Evento no histórico só para mudança real (liga/desliga, online/offline).

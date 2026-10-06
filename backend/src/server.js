@@ -3,6 +3,7 @@ import { config } from "./config/env.js";
 import { pendingMigrations } from "./database/migrator.js";
 import { closePool, pool, waitForDatabase } from "./database/pool.js";
 import { mqttBridge } from "./mqtt/index.js";
+import { createAutomationClock } from "./services/automation.service.js";
 
 // Bootstrap: banco → broker MQTT → HTTP → desligamento limpo.
 
@@ -23,6 +24,10 @@ if (pending.length > 0) {
 if (mqttBridge) mqttBridge.start();
 else console.warn("[mqtt] MQTT_URL vazio: os comandos não serão entregues aos dispositivos");
 
+// Rotinas SE horário → ENTÃO: confere a hora local a cada minuto.
+const automationClock = createAutomationClock();
+automationClock.start();
+
 const server = createApp().listen(config.port, (err) => {
   if (err) {
     const motivo = err.code === "EADDRINUSE" ? `a porta ${config.port} já está em uso` : err.message;
@@ -42,6 +47,7 @@ async function shutdown(signal) {
   // Se alguma conexão segurar o encerramento, desiste depois de 10 s.
   setTimeout(() => process.exit(1), 10_000).unref();
   server.close(async () => {
+    await automationClock.stop();
     await mqttBridge?.stop();
     await closePool();
     process.exit(0);
